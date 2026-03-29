@@ -69,17 +69,30 @@ body {
 
 /* Icon-only toolbar buttons with tooltips via title */
 .tb-btn {
-  width: 34px; height: 32px;
+  min-width: 34px; height: 32px; padding: 0 8px;
   border: 1px solid rgba(255,255,255,.2);
   background: rgba(255,255,255,.08); color: #fff;
   border-radius: 4px; cursor: pointer; font-size: 16px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
   transition: background .13s; font-family: inherit;
-  position: relative;
+  position: relative; text-decoration: none; white-space: nowrap;
 }
 .tb-btn:hover { background: rgba(255,255,255,.2); }
 .tb-btn.accent { background: var(--ust-light-blue); border-color: var(--ust-light-blue); }
 .tb-btn.accent:hover { filter: brightness(1.1); }
+/* Labels hidden by default; shown when body.show-labels is active */
+.tb-label { display: none; font-size: 10px; font-weight: 600; letter-spacing: .3px; }
+body.show-labels .tb-label { display: inline; }
+/* Instructions button always shows its label */
+#btn-instructions .tb-label { display: inline; }
+/* Toolbar meta / credit */
+#tb-meta {
+  margin-left: auto; padding: 0 6px; flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: flex-end; justify-content: center;
+  line-height: 1.3;
+}
+#tb-version { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.5); }
+#tb-credit  { font-size: 9px; color: rgba(255,255,255,.35); white-space: nowrap; }
 
 #add-mod-select {
   padding: 5px 8px; border-radius: 4px;
@@ -273,6 +286,8 @@ body.sidebar-open #page-wrap { margin-right: 340px; }
 .minor-additional { padding: 5px 10px 2px; font-size: var(--table-text-size); color: #333; }
 .minor-additional a { color: var(--accent); text-decoration: none; }
 .minor-additional a:hover { text-decoration: underline; }
+body.edit-mode .minor-addl-link { cursor: pointer; border-bottom: 1px dashed var(--accent); }
+body.edit-mode .minor-addl-link:hover { background: rgba(4,128,200,.07); border-radius: 2px; }
 .add-row-btn {
   margin-top: 5px; width: 100%; padding: 7px;
   border: 1.5px dashed var(--ust-gray-rule); background: none; cursor: pointer;
@@ -464,18 +479,26 @@ body.sidebar-open #settings-sidebar { transform: translateX(0); }
   </select>
 
   <div class="tb-sep"></div>
-  <button class="tb-btn" id="btn-import" title="Import from Excel spreadsheet">📥</button>
-  <button class="tb-btn" id="btn-template" title="Download Excel template">📄</button>
+  <button class="tb-btn" id="btn-import"   title="Import from Excel spreadsheet">📥<span class="tb-label">Import</span></button>
+  <button class="tb-btn" id="btn-template" title="Download Excel template">📄<span class="tb-label">Template</span></button>
 
   <div class="tb-sep"></div>
-  <button class="tb-btn" id="btn-save" title="Save project as JSON">💾</button>
-  <button class="tb-btn" id="btn-load" title="Load project from JSON">📂</button>
+  <button class="tb-btn" id="btn-save" title="Save project as JSON">💾<span class="tb-label">Save</span></button>
+  <button class="tb-btn" id="btn-load" title="Load project from JSON">📂<span class="tb-label">Load</span></button>
 
   <div class="tb-sep"></div>
-  <button class="tb-btn" id="btn-settings" title="Settings">⚙️</button>
+  <button class="tb-btn" id="btn-settings" title="Settings">⚙️<span class="tb-label">Settings</span></button>
 
   <div class="tb-sep"></div>
-  <button class="tb-btn accent" id="btn-print" title="Export PDF">🖨️</button>
+  <a class="tb-btn" id="btn-instructions" href="https://github.com/gzciteli/pr-media-wrap?tab=readme-ov-file#pr-media-wrap" target="_blank" title="Open documentation">📖<span class="tb-label">Instructions</span></a>
+
+  <div class="tb-sep"></div>
+  <button class="tb-btn accent" id="btn-print" title="Export PDF">🖨️<span class="tb-label">Export PDF</span></button>
+
+  <div id="tb-meta">
+    <span id="tb-version"></span>
+    <span id="tb-credit"></span>
+  </div>
 </div>
 
 <!-- DOCUMENT -->
@@ -583,6 +606,7 @@ body.sidebar-open #settings-sidebar { transform: translateX(0); }
       <button class="stab active" data-stab="theme">Theme &amp; Type</button>
       <button class="stab"        data-stab="pubs">Publications</button>
       <button class="stab"        data-stab="tmpl">Template</button>
+      <button class="stab"        data-stab="editor">Editor</button>
     </div>
 
     <!-- THEME & TYPOGRAPHY -->
@@ -628,6 +652,19 @@ body.sidebar-open #settings-sidebar { transform: translateX(0); }
       </div>
       <div id="tmpl-preview-wrap"></div>
     </div>
+
+    <!-- EDITOR -->
+    <div id="stab-editor" class="stab-panel">
+      <p style="font-size:11px;color:#889;margin-bottom:14px;line-height:1.5">
+        These settings control how the editor itself looks and behaves. They are saved locally and do not affect the exported PDF.
+      </p>
+      <div class="fg" style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="s-show-labels" style="width:16px;height:16px;cursor:pointer">
+        <label for="s-show-labels" style="cursor:pointer;margin:0;font-size:12px;font-weight:600">
+          Show text labels on toolbar buttons
+        </label>
+      </div>
+    </div>
   </div>
 
   <div id="ssb-footer">
@@ -641,6 +678,16 @@ body.sidebar-open #settings-sidebar { transform: translateX(0); }
      ================================================================ -->
 <script>
 'use strict';
+
+/* ----------------------------------------------------------------
+   APP METADATA  — edit this block to update version / credits
+   ---------------------------------------------------------------- */
+var APP_META = {
+  version: 'v1',
+  author:  'Gabriel Z. Citeli',
+  year:    '2026',
+  org:     'U.S. Travel Association',
+};
 
 /* ----------------------------------------------------------------
    DEFAULT PUBLICATION PRESETS
@@ -724,6 +771,7 @@ var DEFAULT_SETTINGS = {
     sectionHeadingSize:17, tableTextSize:12.5,
     cardHlSize:12.5, cardCmSize:11.5, cardCmAlign:'left',
   },
+  editor: { showLabels: false },
   publications: DEFAULT_PUBS,
   defaultTemplate: DEFAULT_TEMPLATE,
 };
@@ -794,6 +842,7 @@ function loadSettings() {
     settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
     settings.theme        = Object.assign({}, DEFAULT_SETTINGS.theme,       stored.theme       || {});
     settings.typography   = Object.assign({}, DEFAULT_SETTINGS.typography,  stored.typography  || {});
+    settings.editor       = Object.assign({}, DEFAULT_SETTINGS.editor,      stored.editor      || {});
     settings.publications = mergePubs(stored.publications || [], DEFAULT_PUBS);
     // Always patch importKeys from DEFAULT_TEMPLATE so old stored templates
     // automatically gain import keys added in code updates.
@@ -818,6 +867,10 @@ function applySettings() {
   r.setProperty('--card-hl-size',     settings.typography.cardHlSize     + 'px');
   r.setProperty('--card-cm-size',     settings.typography.cardCmSize     + 'px');
   r.setProperty('--card-cm-align',    settings.typography.cardCmAlign    || 'left');
+  // Editor preferences
+  document.body.classList.toggle('show-labels', !!(settings.editor && settings.editor.showLabels));
+  var sl = document.getElementById('s-show-labels');
+  if (sl) sl.checked = !!(settings.editor && settings.editor.showLabels);
 }
 
 function getPubPreset(pubName) {
@@ -963,7 +1016,12 @@ function buildMod(mod) {
       if (mod.additionalPubs && mod.additionalPubs.length) {
         var ap = document.createElement('div');
         ap.className = 'minor-additional';
-        ap.innerHTML = '+ Additional coverage in ' + mod.additionalPubs.map(function(p) {
+        ap.innerHTML = '+ Additional coverage in ' + mod.additionalPubs.map(function(p, addlIdx) {
+          var isEdit = document.body.classList.contains('edit-mode');
+          if (isEdit) {
+            // In editor: clicking opens the edit popup instead of navigating
+            return '<a href="#" class="minor-addl-link" data-mod-id="' + esc(mod.id) + '" data-addl-idx="' + addlIdx + '">' + esc(p.name) + '</a>';
+          }
           return p.url
             ? '<a href="' + escA(p.url) + '" target="_blank">' + esc(p.name) + '</a>'
             : esc(p.name);
@@ -1208,6 +1266,17 @@ document.getElementById('row-save-btn').addEventListener('click', saveRow);
 document.getElementById('row-cancel-btn').addEventListener('click', closeRowModal);
 document.getElementById('row-modal-x').addEventListener('click', closeRowModal);
 
+// In edit mode: intercept clicks on additional pub links → open edit popup
+document.addEventListener('click', function(e) {
+  var link = e.target.closest ? e.target.closest('.minor-addl-link') : null;
+  if (!link) return;
+  if (!document.body.classList.contains('edit-mode')) return;
+  e.preventDefault();
+  var modId   = link.getAttribute('data-mod-id');
+  var addlIdx = parseInt(link.getAttribute('data-addl-idx'), 10);
+  openEditAdditional(modId, addlIdx);
+});
+
 function openNewRow(modId) {
   _editRowCtx = {modId:modId, rowIdx:-1};
   document.getElementById('row-modal-title').textContent = 'Add Row';
@@ -1231,6 +1300,20 @@ function openEditRow(modId, rowIdx) {
   document.getElementById('row-overlay').classList.add('open');
 }
 
+function openEditAdditional(modId, addlIdx) {
+  var m = modules.find(function(m) { return m.id === modId; }); if (!m) return;
+  if (!m.additionalPubs || addlIdx < 0 || addlIdx >= m.additionalPubs.length) return;
+  var pub = m.additionalPubs[addlIdx];
+  _editRowCtx = {modId:modId, rowIdx:-1, addlIdx:addlIdx};
+  document.getElementById('row-modal-title').textContent = 'Edit Additional Publication';
+  document.getElementById('rp-pub').value = pub.name || '';
+  document.getElementById('rp-hl').value  = '';
+  document.getElementById('rp-url').value = pub.url  || '';
+  document.getElementById('rp-type-group').style.display = 'none';
+  document.getElementById('rp-hl-group').style.display   = 'none';
+  document.getElementById('row-overlay').classList.add('open');
+}
+
 function saveRow() {
   var pub  = document.getElementById('rp-pub').value.trim();
   var hl   = document.getElementById('rp-hl').value.trim();
@@ -1238,7 +1321,11 @@ function saveRow() {
   var type = document.getElementById('rp-type').value;
   if (!pub && !hl) return;
   var m = modules.find(function(m) { return m.id === _editRowCtx.modId; }); if (!m) return;
-  if (_editRowCtx.rowIdx >= 0) {
+  if (_editRowCtx.addlIdx >= 0) {
+    // Editing an existing additional pub entry
+    if (!m.additionalPubs) m.additionalPubs = [];
+    m.additionalPubs[_editRowCtx.addlIdx] = {name:pub, url:url};
+  } else if (_editRowCtx.rowIdx >= 0) {
     m.rows[_editRowCtx.rowIdx] = {publication:pub, headline:hl, url:url};
   } else if (type === 'additional') {
     if (!m.additionalPubs) m.additionalPubs = [];
@@ -1321,6 +1408,10 @@ function openSettings() {
     document.getElementById(id).oninput = applyAndSaveTypo;
   });
   document.getElementById('s-card-cm-align').onchange = applyAndSaveTypo;
+  document.getElementById('s-show-labels').onchange = function() {
+    settings.editor.showLabels = this.checked;
+    applySettings(); saveSettings();
+  };
   // show sidebar (toggle if already open)
   if (document.body.classList.contains('sidebar-open')) {
     closeSettings();
@@ -2067,6 +2158,9 @@ function initDefault() {
     if (m.type === 'header')      { m.date = fmtDate(new Date()); }
     return m;
   });
+  // Populate toolbar meta from APP_META
+  document.getElementById('tb-version').textContent = APP_META.version;
+  document.getElementById('tb-credit').textContent  = APP_META.author + ' ' + APP_META.year + ' · ' + APP_META.org;
   render();
 }
 
