@@ -787,7 +787,6 @@ function render() {
   var doc = document.getElementById('document');
   doc.innerHTML = '';
   modules.forEach(function(mod, idx) { doc.appendChild(buildModWrap(mod, idx)); });
-  applyLogoFallbacks(); // async: hides any SVG logos, shows pub-name text instead
 }
 
 function buildModWrap(mod, idx) {
@@ -945,13 +944,9 @@ function buildCard(modId, card, ci) {
   var cardBg    = preset ? (preset.cardBg || '#ffffff') : '#ffffff';
   if (cardBg && cardBg !== '#ffffff') el.style.backgroundColor = cardBg;
 
-  // If we already know this URL is SVG (from a prior detectLogoType call), skip the img entirely
-  var logoKnownSvg = logoUrl && (_logoTypeCache[logoUrl] === true);
-  var useLogoImg   = logoUrl && !logoKnownSvg;
-
   var textStyle = 'color:' + escA(nameColor) + (hlFont ? ';font-family:' + escA(hlFont) : '');
   var logoHtml;
-  if (useLogoImg) {
+  if (logoUrl) {
     logoHtml =
       '<img class="major-card-logo" src="' + escA(logoUrl) + '" alt="' + escA(card.publication) + '"' +
         ' onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
@@ -1120,15 +1115,8 @@ function cardLogoPreview() {
   }
 
   if (logoUrl) {
-    // Check whether the URL returns an SVG — if so, fall back to name text
-    detectLogoType(logoUrl, function(isSvg) {
-      if (isSvg) {
-        showText();
-      } else {
-        img.src = logoUrl; img.style.display = 'block';
-        txt.style.display = 'none'; none.style.display = 'none';
-      }
-    });
+    img.src = logoUrl; img.style.display = 'block';
+    txt.style.display = 'none'; none.style.display = 'none';
   } else {
     showText();
   }
@@ -1724,43 +1712,45 @@ document.getElementById('json-input').addEventListener('change', function(e) {
    PRINT
    ---------------------------------------------------------------- */
 /* ----------------------------------------------------------------
-   LOGO SVG DETECTION
-   Clearbit and other CDNs sometimes return SVG logos; html2canvas cannot
-   render SVG <img> tags. When an SVG is detected, the img is hidden and
-   the publication name in its brand font is shown instead (in both the
-   live preview and the PDF export).
+   SVG → PNG CONVERSION FOR PDF EXPORT
+   SVG <img> tags render as coloured rectangles in html2canvas.
+   Before exporting we try to rasterise each SVG logo via canvas
+   (works when the image is already loaded and CORS allows it).
+   Uploaded logos are already stored as PNG data-URIs so they never
+   need this step.  URL-based logos show as SVG in the live preview
+   and are converted on-the-fly only during export.
    ---------------------------------------------------------------- */
-var _logoTypeCache = {}; // url → true (is SVG/unusable) | false (is raster/ok)
-
-function detectLogoType(url, callback) {
-  if (!url) { callback(false); return; }
-  if (url in _logoTypeCache) { callback(_logoTypeCache[url]); return; }
-  if (url.startsWith('data:image/svg')) { _logoTypeCache[url] = true;  callback(true);  return; }
-  if (/^data:image\//.test(url))        { _logoTypeCache[url] = false; callback(false); return; }
-  // External URL — HEAD request to read Content-Type
-  fetch(url, { method: 'HEAD', mode: 'cors' })
-    .then(function(r) {
-      var isSvg = (r.headers.get('content-type') || '').toLowerCase().indexOf('svg') >= 0;
-      _logoTypeCache[url] = isSvg;
-      callback(isSvg);
-    })
-    .catch(function() {
-      // CORS error or unreachable — assume raster, leave img visible
-      _logoTypeCache[url] = false;
-      callback(false);
-    });
+function isSvgSrc(src) {
+  if (!src) return false;
+  if (src.startsWith('data:image/svg')) return true;
+  // Wikimedia and other hosts serve SVGs at URLs containing .svg
+  return /\.svg(\?|#|$)/i.test(src);
 }
 
-/* Walk all rendered logo areas and hide any img whose URL is SVG */
-function applyLogoFallbacks() {
-  document.querySelectorAll('.major-card-logo-area').forEach(function(area) {
-    var img  = area.querySelector('.major-card-logo');
-    var text = area.querySelector('.major-card-logo-text');
-    if (!img || !img.src || img.src === window.location.href) return;
-    detectLogoType(img.src, function(isSvg) {
-      if (isSvg) { img.style.display = 'none'; if (text) text.style.display = ''; }
-    });
+/* Returns a Promise that resolves to an array of restore-functions.
+   Call each restore-fn after export to put back the original src.   */
+function convertSvgImgsForExport(container) {
+  var restores = [];
+  var promises = [];
+  container.querySelectorAll('img.major-card-logo').forEach(function(img) {
+    if (!isSvgSrc(img.src)) return;
+    var origSrc = img.src;
+    promises.push(new Promise(function(resolve) {
+      try {
+        var w = img.naturalWidth  || img.offsetWidth  || 220;
+        var h = img.naturalHeight || img.offsetHeight || 60;
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        img.src = canvas.toDataURL('image/png');
+        restores.push(function() { img.src = origSrc; });
+      } catch(e) {
+        // Tainted canvas (CORS) — leave as-is; html2canvas will do its best
+      }
+      resolve();
+    }));
   });
+  return Promise.all(promises).then(function() { return restores; });
 }
 
 /* ----------------------------------------------------------------
@@ -1799,14 +1789,21 @@ function doPrint() {
     pagebreak:   { mode: ['css', 'legacy'], avoid: ['.major-card', '.mod-minor-table'] },
   };
 
-  html2pdf().set(opt).from(doc).output('blob')
-    .then(function(blob) {
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a'); a.href = url; a.download = 'media-wrap.pdf'; a.click();
-      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-    })
-    .catch(function(err) { console.error('html2pdf error:', err); window.print(); })
-    .then(restore, restore);
+  // Rasterise any SVG logos before html2canvas sees them, then restore afterwards
+  convertSvgImgsForExport(doc).then(function(restoreFns) {
+    html2pdf().set(opt).from(doc).output('blob')
+      .then(function(blob) {
+        restoreFns.forEach(function(fn) { fn(); });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a'); a.href = url; a.download = 'media-wrap.pdf'; a.click();
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+      })
+      .catch(function(err) {
+        restoreFns.forEach(function(fn) { fn(); });
+        console.error('html2pdf error:', err); window.print();
+      })
+      .then(restore, restore);
+  });
 }
 
 
@@ -1859,9 +1856,32 @@ function initDefault() {
   render();
 }
 
-loadSettings();
-applySettings();
-initDefault();
+/* ----------------------------------------------------------------
+   BOOT — fetch external settings.json, then initialize
+   settings.json lives beside index.html in the same GitHub repo.
+   If the fetch fails (offline, local file://, etc.) we fall back
+   silently to the hardcoded DEFAULT_PUBS / DEFAULT_TEMPLATE above.
+   ---------------------------------------------------------------- */
+(function() {
+  fetch('./settings.json')
+    .then(function(r) { return r.ok ? r.json() : Promise.reject('not ok'); })
+    .then(function(remote) {
+      if (Array.isArray(remote.publications)    && remote.publications.length)
+        DEFAULT_PUBS = remote.publications;
+      if (Array.isArray(remote.defaultTemplate) && remote.defaultTemplate.length)
+        DEFAULT_TEMPLATE = remote.defaultTemplate;
+      if (remote.theme)      Object.assign(DEFAULT_SETTINGS.theme,      remote.theme);
+      if (remote.typography) Object.assign(DEFAULT_SETTINGS.typography, remote.typography);
+      DEFAULT_SETTINGS.publications    = DEFAULT_PUBS;
+      DEFAULT_SETTINGS.defaultTemplate = DEFAULT_TEMPLATE;
+    })
+    .catch(function() { /* use hardcoded fallbacks */ })
+    .then(function() {
+      loadSettings();
+      applySettings();
+      initDefault();
+    });
+}());
 </script>
 </body>
 </html>
