@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PR Media Wrap Editor</title>
 
-<!-- Google Fonts: publication-matched headline typefaces -->
+<!-- Google Fonts: Merriweather (UST approved web font) + publication-matched headline typefaces -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Oswald:wght@400;500;700&family=Playfair+Display:ital,wght@0,400;0,700&family=Roboto+Condensed:wght@400;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Oswald:wght@400;500;700&family=Playfair+Display:ital,wght@0,400;0,700&family=Roboto+Condensed:wght@400;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
@@ -17,8 +17,18 @@
    CSS CUSTOM PROPERTIES — driven by Settings
    ================================================================= */
 :root {
-  --header-bg:        #1c4f63;
-  --accent:           #2178a0;
+  /* UST Brand Colors */
+  --ust-blue:         #003055;
+  --ust-light-blue:   #0480C8;
+  --ust-red:          #9D1C20;
+  --ust-teal:         #005F7E;
+  --ust-gray-light:   #F5F5F5;
+  --ust-gray-rule:    #E1E1E1;
+  --ust-gray-text:    #222222;
+
+  /* Dynamic — overridden by settings */
+  --header-bg:        #003055;
+  --accent:           #0480C8;
   --stat-value-size:  52px;
   --stat-label-size:  11.5px;
   --sec-heading-size: 17px;
@@ -27,6 +37,10 @@
   --card-cm-size:     11.5px;
   --card-cm-align:    left;
   --header-text-size: 10.5px;
+
+  /* UST brand font stack: Gotham for anyone who has it (UST employees),
+     Merriweather (loaded from Google Fonts) for everyone else, Arial as fallback */
+  --brand-font: 'Gotham', Arial, 'Merriweather', sans-serif;
 }
 
 /* =================================================================
@@ -34,8 +48,8 @@
    ================================================================= */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  background: #e8eaed; color: #222; font-size: 14px;
+  font-family: var(--brand-font);
+  background: var(--ust-gray-light); color: var(--ust-gray-text); font-size: 14px;
 }
 
 /* =================================================================
@@ -43,38 +57,38 @@ body {
    ================================================================= */
 #toolbar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
-  background: #1e2a35; height: 52px;
+  background: var(--ust-blue); height: 52px;
   display: flex; align-items: center; padding: 0 14px; gap: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.35); overflow-x: auto;
+  box-shadow: 0 2px 12px rgba(0,0,0,.3); overflow-x: auto;
 }
 #toolbar-brand {
-  font-size: 12px; font-weight: 700; letter-spacing: .5px;
-  color: #a8c8d8; white-space: nowrap; margin-right: 4px; flex-shrink: 0;
+  font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+  color: rgba(255,255,255,.65); white-space: nowrap; margin-right: 4px; flex-shrink: 0;
 }
-.tb-sep { width: 1px; height: 26px; background: rgba(255,255,255,.15); flex-shrink: 0; }
+.tb-sep { width: 1px; height: 26px; background: rgba(255,255,255,.2); flex-shrink: 0; }
 
 /* Icon-only toolbar buttons with tooltips via title */
 .tb-btn {
   width: 34px; height: 32px;
-  border: 1px solid rgba(255,255,255,.18);
-  background: rgba(255,255,255,.07); color: #e8edf0;
-  border-radius: 5px; cursor: pointer; font-size: 16px; flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.08); color: #fff;
+  border-radius: 4px; cursor: pointer; font-size: 16px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   transition: background .13s; font-family: inherit;
   position: relative;
 }
-.tb-btn:hover { background: rgba(255,255,255,.18); }
-.tb-btn.accent { background: #2478a0; border-color: #1d6a8e; }
-.tb-btn.accent:hover { background: #1d6a8e; }
+.tb-btn:hover { background: rgba(255,255,255,.2); }
+.tb-btn.accent { background: var(--ust-light-blue); border-color: var(--ust-light-blue); }
+.tb-btn.accent:hover { filter: brightness(1.1); }
 
 #add-mod-select {
-  padding: 5px 8px; border-radius: 5px;
-  border: 1px solid rgba(255,255,255,.18);
-  background: rgba(255,255,255,.07); color: #e8edf0;
-  font-size: 12px; cursor: pointer; flex-shrink: 0; font-family: inherit;
+  padding: 5px 8px; border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.08); color: #fff;
+  font-size: 12px; cursor: pointer; flex-shrink: 0; font-family: var(--brand-font);
   height: 32px;
 }
-#add-mod-select option { background: #1e2a35; }
+#add-mod-select option { background: var(--ust-blue); }
 
 /* =================================================================
    PAGE / DOCUMENT
@@ -98,7 +112,7 @@ body.sidebar-open #page-wrap { margin-right: 340px; }
 
 .mod-ctrl-bar {
   position: absolute; top: 0; right: 0;
-  background: rgba(20,40,55,.9); border-radius: 0 0 0 6px;
+  background: rgba(0,48,85,.92); border-radius: 0 0 0 6px;
   padding: 3px 5px; display: flex; gap: 3px;
   opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 50;
 }
@@ -115,8 +129,8 @@ body.sidebar-open #page-wrap { margin-right: 340px; }
 /* Import-key strip */
 .import-key-row {
   display: none; align-items: center; gap: 6px;
-  padding: 3px 10px 4px; background: #f0f4f7;
-  border-bottom: 1px solid #e0e6ea;
+  padding: 3px 10px 4px; background: var(--ust-gray-light);
+  border-bottom: 1px solid var(--ust-gray-rule);
   font-size: 10px; color: #7a90a0; text-transform: uppercase; letter-spacing: .6px;
 }
 .mod-wrap:hover > .import-key-row { display: flex; }
@@ -129,22 +143,22 @@ body.sidebar-open #page-wrap { margin-right: 340px; }
    MODULE: HEADER BAR
    ================================================================= */
 .mod-header {
-  background: var(--header-bg); color: #fff; padding: 10px 20px;
+  background: var(--header-bg); color: #fff; padding: 12px 24px;
   display: flex; justify-content: space-between; align-items: center;
 }
 .mod-header-title {
-  font-size: var(--header-text-size); font-weight: 600;
-  letter-spacing: 1.8px; text-transform: uppercase;
+  font-size: var(--header-text-size); font-weight: 700; font-family: var(--brand-font);
+  letter-spacing: 2px; text-transform: uppercase;
 }
-.mod-header-date { font-size: var(--header-text-size); letter-spacing: .8px; }
+.mod-header-date { font-size: var(--header-text-size); letter-spacing: .8px; font-family: var(--brand-font); opacity: .85; }
 
 /* =================================================================
    MODULE: STATS ROW
    ================================================================= */
-.mod-stats { padding: 10px 28px 22px; display: flex; align-items: flex-end; gap: 48px; flex-wrap: wrap; }
+.mod-stats { padding: 10px 28px 16px; display: flex; align-items: flex-end; gap: 48px; flex-wrap: wrap; }
 .stat-wrap { position: relative; display: inline-flex; flex-direction: column; }
-.stat-value { font-size: var(--stat-value-size); font-weight: 300; line-height: 1; color: #111; letter-spacing: -1.5px; }
-.stat-label { font-size: var(--stat-label-size); color: #777; margin-top: 5px; }
+.stat-value { font-size: var(--stat-value-size); font-weight: 700; line-height: 1; color: var(--ust-blue); letter-spacing: -1px; font-family: var(--brand-font); }
+.stat-label { font-size: var(--stat-label-size); color: var(--ust-gray-text); opacity: .85; margin-top: 6px; text-transform: uppercase; letter-spacing: .8px; font-family: var(--brand-font); }
 .stat-rm {
   position: absolute; top: -6px; right: -10px;
   width: 17px; height: 17px; background: #c0392b; color: #fff;
@@ -163,62 +177,85 @@ body.sidebar-open #page-wrap { margin-right: 340px; }
 /* =================================================================
    MODULE: SECTION HEADING
    ================================================================= */
-.mod-sec-heading { padding: 18px 28px 6px; font-size: var(--sec-heading-size); font-weight: 700; color: #111; }
+.mod-sec-heading {
+  padding: 12px 28px 6px; font-size: var(--sec-heading-size); font-weight: 700;
+  color: var(--ust-blue); font-family: var(--brand-font); letter-spacing: .3px;
+  margin: 0 28px; padding-left: 0; padding-right: 0;
+}
 
 /* =================================================================
    MODULE: HERO GRID
    ================================================================= */
-.mod-major-grid { padding: 4px 28px 22px; }
-.major-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #d4d8dc; }
+.mod-major-grid { padding: 4px 28px 14px; }
+.major-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .major-card {
-  padding: 20px 18px 16px; border: .5px solid #d4d8dc;
-  display: flex; flex-direction: column; align-items: flex-start;
-  gap: 10px; position: relative; min-height: 150px;
+  display: flex; flex-direction: column;
+  position: relative;
+  border-radius: 6px; overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.09), 0 0 0 1px rgba(0,0,0,0.05);
 }
-.major-card-logo-area { width: 100%; display: flex; align-items: center; justify-content: center; min-height: 48px; }
-.major-card-logo { max-height: 44px; max-width: 160px; object-fit: contain; }
-.major-card-logo-text { font-size: 24px; font-weight: 800; text-align: center; }
+/* Top section — holds the publication logo on its brand background */
+.major-card-top {
+  padding: 10px 16px 8px;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 50px;
+}
+/* Bottom section — always white, holds headline + commentary */
+.major-card-body {
+  background: #fff;
+  padding: 12px 18px 14px;
+  display: flex; flex-direction: column;
+  gap: 4px; flex: 1;
+}
+.major-card-logo-area { width: 100%; display: flex; align-items: center; justify-content: center; }
+.major-card-logo { max-height: 32px; max-width: 130px; object-fit: contain; }
+.major-card-logo-text { font-size: 20px; font-weight: 800; text-align: center; }
 .major-card-headlines { width: 100%; display: flex; flex-direction: column; gap: 3px; }
 .major-card-headline {
   font-size: var(--card-hl-size); font-weight: 700; color: #111;
   text-decoration: none; line-height: 1.35; display: block;
 }
 .major-card-headline:hover { color: var(--accent); }
-.major-card-commentary { font-size: var(--card-cm-size); color: #555; margin-top: auto; text-align: var(--card-cm-align); width: 100%; }
+.major-card-commentary { font-size: var(--card-cm-size); color: #667; margin-top: auto; padding-top: 6px; text-align: var(--card-cm-align); width: 100%; font-family: var(--brand-font); }
+/* Both action buttons float in the top-right corner; position:absolute keeps them
+   outside the document flow so they never affect card height */
 .card-btns {
-  position: absolute; bottom: 7px; right: 7px;
-  display: none; gap: 4px;
+  position: absolute; top: 5px; right: 27px;
+  display: none; gap: 3px;
 }
 .card-rm-btn {
-  position: absolute; top: 6px; right: 6px;
-  width: 18px; height: 18px; background: #c0392b; color: #fff;
+  position: absolute; top: 5px; right: 5px;
+  width: 20px; height: 20px; background: rgba(192,57,43,0.82); color: #fff;
   border: none; border-radius: 50%; cursor: pointer; font-size: 10px;
   display: none; align-items: center; justify-content: center;
 }
 .card-edit-btn {
-  padding: 2px 6px; font-size: 13px; background: #eef2f5;
-  border: 1px solid #ccd4da; border-radius: 3px; cursor: pointer; color: #556;
+  width: 20px; height: 20px; font-size: 11px; padding: 0;
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(0,0,0,0.18); border-radius: 50%;
+  cursor: pointer; color: var(--ust-blue);
+  display: flex; align-items: center; justify-content: center;
   font-family: inherit;
 }
-.card-edit-btn:hover { background: #dde3e7; }
+.card-edit-btn:hover { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
 .major-card:hover .card-btns,
 .major-card:hover .card-rm-btn { display: flex; }
 .major-card-add {
   grid-column: 1 / -1; padding: 12px;
-  border: 1.5px dashed #ccd4da; background: #fafbfc;
-  cursor: pointer; text-align: center; color: #99aab8;
-  font-size: 12px; display: none; font-family: inherit;
+  border: 1.5px dashed var(--ust-gray-rule); background: var(--ust-gray-light);
+  cursor: pointer; text-align: center; color: #aab4be;
+  font-size: 12px; display: none; font-family: var(--brand-font);
 }
-.major-card-add:hover { border-color: var(--accent); color: var(--accent); background: #f0f6fa; }
+.major-card-add:hover { border-color: var(--accent); color: var(--accent); background: #eef6fc; }
 
 /* =================================================================
    MODULE: TABLE
    ================================================================= */
-.mod-minor-table { padding: 2px 28px 20px; }
+.mod-minor-table { padding: 2px 28px 12px; }
 .minor-tbl { width: 100%; border-collapse: collapse; table-layout: auto; }
-.minor-tbl tr:nth-child(even) td { background: #f7f8f9; }
-.minor-tbl td { padding: 7px 10px; font-size: var(--table-text-size); vertical-align: middle; line-height: 1.4; }
-.minor-td-pub { white-space: nowrap; text-align: right; color: #999; padding-right: 14px; width: 1px; }
+.minor-tbl tr:nth-child(even) td { background: var(--ust-gray-light); }
+.minor-tbl td { padding: 7px 10px; font-size: var(--table-text-size); vertical-align: middle; line-height: 1.4; font-family: var(--brand-font); }
+.minor-td-pub { white-space: nowrap; text-align: right; color: #888; padding-right: 14px; width: 1px; font-weight: 600; }
 .minor-td-hl { width: auto; }
 .hl-inner { display: flex; align-items: flex-start; gap: 8px; }
 .hl-text { flex: 1; }
@@ -228,7 +265,7 @@ body.sidebar-open #page-wrap { margin-right: 340px; }
 .minor-tbl tr:hover .row-btns { display: flex; }
 .row-btn {
   padding: 2px 6px; font-size: 13px; border-radius: 3px;
-  border: 1px solid #cdd8e0; background: #f0f4f7;
+  border: 1px solid var(--ust-gray-rule); background: var(--ust-gray-light);
   color: #556; cursor: pointer; font-family: inherit; line-height: 1;
 }
 .row-btn:hover { background: #dde3e7; }
@@ -238,9 +275,9 @@ body.sidebar-open #page-wrap { margin-right: 340px; }
 .minor-additional a:hover { text-decoration: underline; }
 .add-row-btn {
   margin-top: 5px; width: 100%; padding: 7px;
-  border: 1.5px dashed #ccd4da; background: none; cursor: pointer;
+  border: 1.5px dashed var(--ust-gray-rule); background: none; cursor: pointer;
   color: #aab8c2; font-size: 11px; border-radius: 3px;
-  display: none; font-family: inherit;
+  display: none; font-family: var(--brand-font);
 }
 .add-row-btn:hover { border-color: var(--accent); color: var(--accent); }
 
@@ -250,24 +287,25 @@ body.sidebar-open #page-wrap { margin-right: 340px; }
 .mod-html-block { padding: 14px 28px; }
 .html-block-rendered {
   font-size: 13.5px; line-height: 1.55; color: #333; min-height: 20px; outline: none;
+  font-family: var(--brand-font);
 }
 .html-block-rendered a { color: var(--accent); text-decoration: none; }
 .html-block-rendered a:hover { text-decoration: underline; }
 .html-block-rendered p { margin: 0; }
 .html-block-rendered p + p { margin-top: 8px; }
 body.edit-mode .html-block-rendered { cursor: text; }
-body.edit-mode .html-block-rendered:hover { background: rgba(33,120,160,.04); border-radius: 3px; }
+body.edit-mode .html-block-rendered:hover { background: rgba(4,128,200,.04); border-radius: 3px; }
 body.edit-mode .html-block-rendered:focus {
-  background: rgba(33,120,160,.06);
-  box-shadow: inset 0 0 0 1.5px rgba(33,120,160,.25); border-radius: 3px; outline: none;
+  background: rgba(4,128,200,.06);
+  box-shadow: inset 0 0 0 1.5px rgba(4,128,200,.25); border-radius: 3px; outline: none;
 }
 
 /* =================================================================
    CONTENTEDITABLE (non-html-block)
    ================================================================= */
-body.edit-mode [contenteditable]:not(.html-block-rendered):hover { background: rgba(33,120,160,.04); border-radius: 2px; }
+body.edit-mode [contenteditable]:not(.html-block-rendered):hover { background: rgba(4,128,200,.04); border-radius: 2px; }
 body.edit-mode [contenteditable]:not(.html-block-rendered):focus {
-  background: rgba(33,120,160,.07); box-shadow: inset 0 -1.5px 0 var(--accent); border-radius: 2px; outline: none;
+  background: rgba(4,128,200,.07); box-shadow: inset 0 -1.5px 0 var(--accent); border-radius: 2px; outline: none;
 }
 
 /* =================================================================
@@ -299,14 +337,14 @@ body:not(.edit-mode) .row-btns { display: none !important; }
 }
 .modal.wide { width: 680px; }
 .modal.x-wide { width: 820px; }
-.modal h3 { font-size: 15px; color: #1c3040; margin-bottom: 16px; }
+.modal h3 { font-size: 15px; color: var(--ust-blue); margin-bottom: 16px; font-family: var(--brand-font); font-weight: 700; }
 .modal-x { float: right; background: none; border: none; font-size: 19px; cursor: pointer; color: #aaa; margin: -2px -2px 0 0; }
 .modal-x:hover { color: #333; }
 .fg { margin-bottom: 13px; }
-.fg label { display: block; font-size: 11px; font-weight: 700; color: #556; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
+.fg label { display: block; font-size: 11px; font-weight: 700; color: var(--ust-blue); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .6px; font-family: var(--brand-font); }
 .fg input, .fg textarea, .fg select {
-  width: 100%; padding: 7px 9px; border: 1px solid #cdd8e0;
-  border-radius: 4px; font-size: 13px; color: #333; font-family: inherit;
+  width: 100%; padding: 7px 9px; border: 1px solid var(--ust-gray-rule);
+  border-radius: 4px; font-size: 13px; color: #333; font-family: var(--brand-font);
 }
 .fg textarea { resize: vertical; }
 .fg input[type="color"] { height: 36px; padding: 3px 4px; cursor: pointer; }
@@ -314,12 +352,12 @@ body:not(.edit-mode) .row-btns { display: none !important; }
 .fg input:focus, .fg textarea:focus, .fg select:focus { outline: none; border-color: var(--accent); }
 .fg .hint { font-size: 10.5px; color: #aaa; margin-top: 3px; line-height: 1.4; }
 .modal-footer { display: flex; gap: 8px; align-items: center; margin-top: 16px; }
-.btn { padding: 7px 14px; border-radius: 4px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; white-space: nowrap; }
-.btn-primary { background: var(--accent); color: #fff; }
-.btn-primary:hover { filter: brightness(.9); }
-.btn-secondary { background: #ecf0f2; color: #556; }
-.btn-secondary:hover { background: #dde3e7; }
-.btn-link { background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; padding: 0; font-family: inherit; }
+.btn { padding: 7px 16px; border-radius: 4px; border: none; cursor: pointer; font-size: 13px; font-weight: 700; font-family: var(--brand-font); white-space: nowrap; letter-spacing: .3px; }
+.btn-primary { background: var(--ust-light-blue); color: #fff; }
+.btn-primary:hover { filter: brightness(.92); }
+.btn-secondary { background: var(--ust-gray-light); color: var(--ust-blue); border: 1px solid var(--ust-gray-rule); }
+.btn-secondary:hover { background: var(--ust-gray-rule); }
+.btn-link { background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; padding: 0; font-family: var(--brand-font); }
 .btn-link:hover { text-decoration: underline; }
 
 /* =================================================================
@@ -337,8 +375,9 @@ body:not(.edit-mode) .row-btns { display: none !important; }
 body.sidebar-open #settings-sidebar { transform: translateX(0); }
 #ssb-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 13px 16px; border-bottom: 1px solid #e4e8ec; flex-shrink: 0;
-  font-size: 13px; font-weight: 700; color: #1c3040;
+  padding: 13px 16px; border-bottom: 1px solid var(--ust-gray-rule); flex-shrink: 0;
+  font-size: 13px; font-weight: 700; color: var(--ust-blue); font-family: var(--brand-font);
+  letter-spacing: .4px; text-transform: uppercase;
 }
 #ssb-header button {
   background: none; border: none; cursor: pointer;
@@ -347,16 +386,17 @@ body.sidebar-open #settings-sidebar { transform: translateX(0); }
 #ssb-header button:hover { color: #333; }
 #ssb-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
 #ssb-footer {
-  border-top: 1px solid #e4e8ec; padding: 10px 16px;
+  border-top: 1px solid var(--ust-gray-rule); padding: 10px 16px;
   display: flex; gap: 8px; flex-shrink: 0;
 }
-.stab-row { display: flex; gap: 2px; border-bottom: 1px solid #e4e8ec; margin-bottom: 16px; }
+.stab-row { display: flex; gap: 2px; border-bottom: 1px solid var(--ust-gray-rule); margin-bottom: 16px; }
 .stab {
   padding: 6px 11px; border: none; border-bottom: 2px solid transparent;
   background: none; cursor: pointer; font-size: 12px; color: #778;
-  font-family: inherit; margin-bottom: -1px; transition: color .12s; white-space: nowrap;
+  font-family: var(--brand-font); margin-bottom: -1px; transition: color .12s; white-space: nowrap;
+  font-weight: 600; letter-spacing: .3px;
 }
-.stab:hover { color: #334; }
+.stab:hover { color: var(--ust-blue); }
 .stab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
 .stab-panel { display: none; }
 .stab-panel.active { display: block; }
@@ -364,8 +404,8 @@ body.sidebar-open #settings-sidebar { transform: translateX(0); }
 
 /* Publications table in settings */
 .pub-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
-.pub-tbl th { font-size: 10px; text-transform: uppercase; color: #889; letter-spacing: .5px; padding: 5px 8px; text-align: left; border-bottom: 1px solid #e4e8ec; }
-.pub-tbl td { padding: 5px 8px; border-bottom: 1px solid #f0f4f7; vertical-align: middle; }
+.pub-tbl th { font-size: 10px; text-transform: uppercase; color: #889; letter-spacing: .5px; padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--ust-gray-rule); }
+.pub-tbl td { padding: 5px 8px; border-bottom: 1px solid var(--ust-gray-rule); vertical-align: middle; }
 .pub-tbl tr:last-child td { border-bottom: none; }
 .pub-tbl input { width: 100%; padding: 3px 6px; border: 1px solid #cdd8e0; border-radius: 3px; font-size: 11px; font-family: inherit; }
 .pub-tbl input[type="color"] { width: 36px; height: 26px; padding: 1px 2px; cursor: pointer; }
@@ -382,7 +422,7 @@ body.sidebar-open #settings-sidebar { transform: translateX(0); }
 
 /* Template preview list */
 .template-preview-list { font-size: 12px; color: #556; line-height: 2; }
-.template-preview-list span { display: inline-block; background: #f0f4f7; border-radius: 3px; padding: 1px 7px; margin: 1px 3px; }
+.template-preview-list span { display: inline-block; background: var(--ust-gray-light); border-radius: 3px; padding: 1px 7px; margin: 1px 3px; }
 
 /* =================================================================
    PRINT
@@ -396,8 +436,10 @@ body.sidebar-open #settings-sidebar { transform: translateX(0); }
   .mod-ctrl-bar, .import-key-row, .stat-add-btn, .stat-rm,
   .major-card-add, .card-btns, .card-rm-btn, .add-row-btn, .row-btns { display: none !important; }
   [contenteditable], .html-block-rendered { background: none !important; box-shadow: none !important; }
-  .major-card { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  .major-grid { break-inside: avoid; }
+  /* Replace box-shadow with a real border so cards are visible in print output */
+  .major-card { print-color-adjust: exact; -webkit-print-color-adjust: exact;
+    box-shadow: none !important; border: 1px solid #d0d4d8 !important; }
+  .major-grid { break-inside: avoid; gap: 10px; }
   .mod-minor-table { break-inside: avoid; }
 }
 </style>
@@ -663,20 +705,20 @@ var DEFAULT_PUBS = [
 ];
 
 var DEFAULT_TEMPLATE = [
-  { type:'header',          title:'MEDIA COVERAGE WRAP: [CAMPAIGN TITLE]' },
-  { type:'html-block',      html:'<p><a href="#" style="color:var(--accent,#2178a0);text-decoration:none">[Press release title]</a> issued by [Organization] on [topic].</p>' },
-  { type:'stats',           items:[{value:'0',label:'Total Potential Reach'},{value:'0',label:'Unique Stories'},{value:'0',label:'Total Placements'}] },
+  { type:'header',          importKey:'doc_title',     title:'MEDIA COVERAGE WRAP: [CAMPAIGN TITLE]' },
+  { type:'html-block',      importKey:'intro_text',    html:'<p><a href="#" style="color:var(--accent,#0480C8);text-decoration:none">[Press release title]</a> issued by [Organization] on [topic].</p>' },
+  { type:'stats',           importKey:'summary_stats', items:[{value:'0',label:'Total Potential Reach'},{value:'0',label:'Unique Stories'},{value:'0',label:'Total Placements'}] },
   { type:'section-heading', text:'Top-Tier Domestic Coverage' },
   { type:'major-grid',      importKey:'featured' },
   { type:'section-heading', text:'Additional Domestic Coverage' },
   { type:'minor-table',     importKey:'domestic' },
   { type:'section-heading', text:'International Coverage' },
   { type:'minor-table',     importKey:'international' },
-  { type:'html-block',      html:'<p style="font-size:12px;color:#777">Includes all mentions [start date] through [end date] EOD.</p>' },
+  { type:'html-block',      importKey:'footer_text',   html:'<p style="font-size:12px;color:#777">Includes all mentions [start date] through [end date] EOD.</p>' },
 ];
 
 var DEFAULT_SETTINGS = {
-  theme: { headerBg:'#1c4f63', accentColor:'#2178a0' },
+  theme: { headerBg:'#003055', accentColor:'#0480C8' },
   typography: {
     statValueSize:52, statLabelSize:11.5,
     sectionHeadingSize:17, tableTextSize:12.5,
@@ -731,6 +773,19 @@ function mergePubs(storedPubs, defaultPubs) {
   return result;
 }
 
+// Carry over importKeys from fresh DEFAULT_TEMPLATE into a stored template,
+// matching by position + type. Safe to call with null/undefined storedTpl.
+function mergeTemplateKeys(storedTpl, freshTpl) {
+  if (!storedTpl || !storedTpl.length) return JSON.parse(JSON.stringify(freshTpl));
+  return storedTpl.map(function(m, i) {
+    var f = freshTpl[i];
+    if (f && f.type === m.type && f.importKey && !m.importKey) {
+      return Object.assign({}, m, { importKey: f.importKey });
+    }
+    return m;
+  });
+}
+
 function loadSettings() {
   var stored = null;
   try { stored = JSON.parse(localStorage.getItem('pr-wrap-settings')); } catch(e) {}
@@ -740,7 +795,9 @@ function loadSettings() {
     settings.theme        = Object.assign({}, DEFAULT_SETTINGS.theme,       stored.theme       || {});
     settings.typography   = Object.assign({}, DEFAULT_SETTINGS.typography,  stored.typography  || {});
     settings.publications = mergePubs(stored.publications || [], DEFAULT_PUBS);
-    settings.defaultTemplate = stored.defaultTemplate || DEFAULT_TEMPLATE;
+    // Always patch importKeys from DEFAULT_TEMPLATE so old stored templates
+    // automatically gain import keys added in code updates.
+    settings.defaultTemplate = mergeTemplateKeys(stored.defaultTemplate, DEFAULT_TEMPLATE);
   } else {
     settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
   }
@@ -813,8 +870,8 @@ function buildModWrap(mod, idx) {
   });
   wrap.appendChild(ctrl);
 
-  // import key strip
-  if (mod.type === 'major-grid' || mod.type === 'minor-table') {
+  // import key strip — shown for all importable module types
+  if (['major-grid','minor-table','stats','header','html-block'].indexOf(mod.type) !== -1) {
     var ikr = document.createElement('div');
     ikr.className = 'import-key-row';
     ikr.innerHTML = '<span>Import key:</span>' +
@@ -942,45 +999,48 @@ function buildCard(modId, card, ci) {
   var hlFont    = preset ? preset.font : null;
   var nameColor = preset ? preset.nameColor : '#222';
   var cardBg    = preset ? (preset.cardBg || '#ffffff') : '#ffffff';
-  if (cardBg && cardBg !== '#ffffff') el.style.backgroundColor = cardBg;
 
-  var textStyle = 'color:' + escA(nameColor) + (hlFont ? ';font-family:' + escA(hlFont) : '');
+  // Logo area uses nameColor + cardBg (brand identity section at top of card)
+  var logoTextStyle = 'color:' + escA(nameColor) + (hlFont ? ';font-family:' + escA(hlFont) : '');
   var logoHtml;
   if (logoUrl) {
     logoHtml =
       '<img class="major-card-logo" src="' + escA(logoUrl) + '" alt="' + escA(card.publication) + '"' +
         ' onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
-      '<span class="major-card-logo-text" style="display:none;' + textStyle + '">' +
+      '<span class="major-card-logo-text" style="display:none;' + logoTextStyle + '">' +
         esc(card.publication) + '</span>';
   } else {
     logoHtml =
-      '<span class="major-card-logo-text" style="' + textStyle + '">' +
+      '<span class="major-card-logo-text" style="' + logoTextStyle + '">' +
         esc(card.publication) + '</span>';
   }
 
+  // Headlines are always in the white body section — use publication font, near-black color
   var hlHtml = (card.headlines || []).map(function(h) {
-    // Apply nameColor + font to each headline (inline style overrides the CSS default #111)
-    var hlStyle = 'color:' + escA(nameColor) + (hlFont ? ';font-family:' + escA(hlFont) : '');
+    var hlStyle = hlFont ? 'font-family:' + escA(hlFont) : '';
     return h.url
-      ? '<a class="major-card-headline" style="' + hlStyle + '" href="' + escA(h.url) + '" target="_blank">' + esc(h.text) + '</a>'
-      : '<span class="major-card-headline" style="' + hlStyle + '">' + esc(h.text) + '</span>';
+      ? '<a class="major-card-headline"' + (hlStyle ? ' style="' + hlStyle + '"' : '') + ' href="' + escA(h.url) + '" target="_blank">' + esc(h.text) + '</a>'
+      : '<span class="major-card-headline"' + (hlStyle ? ' style="' + hlStyle + '"' : '') + '>' + esc(h.text) + '</span>';
   }).join('');
 
   el.innerHTML =
-    '<div class="major-card-logo-area">' + logoHtml + '</div>' +
-    '<div class="major-card-headlines">' + hlHtml + '</div>' +
-    '<div class="major-card-commentary" style="color:' + escA(nameColor) + '">' + esc(card.commentary || '') + '</div>' +
+    '<div class="major-card-top" style="background:' + escA(cardBg) + '">' +
+      '<div class="major-card-logo-area">' + logoHtml + '</div>' +
+    '</div>' +
+    '<div class="major-card-body">' +
+      '<div class="major-card-headlines">' + hlHtml + '</div>' +
+      '<div class="major-card-commentary">' + esc(card.commentary || '') + '</div>' +
+    '</div>' +
     '<button class="card-rm-btn" title="Remove card">✕</button>' +
     '<div class="card-btns"><button class="card-edit-btn" title="Edit card">✏</button></div>';
 
   el.querySelector('.card-rm-btn').addEventListener('click',   function() { rmCard(modId, ci); });
   el.querySelector('.card-edit-btn').addEventListener('click', function() { openEditCard(modId, ci); });
-  // Hover tint on headlines — inline style beats CSS :hover so we wire it in JS
-  var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2178a0';
+  // Hover tint on headlines — CSS :hover handles default; JS only needed since font may be inline
+  var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#0480C8';
   el.querySelectorAll('.major-card-headline').forEach(function(hl) {
-    var base = hl.style.color;
     hl.addEventListener('mouseenter', function() { hl.style.color = accent; });
-    hl.addEventListener('mouseleave', function() { hl.style.color = base; });
+    hl.addEventListener('mouseleave', function() { hl.style.color = ''; });
   });
   return el;
 }
@@ -1358,7 +1418,7 @@ function openLogoUploadModal() {
 
   overlay.innerHTML =
     '<div style="background:#fff;border-radius:8px;padding:24px;width:400px;max-width:92vw;box-shadow:0 8px 32px rgba(0,0,0,.22)">' +
-      '<div style="font-size:14px;font-weight:700;color:#1c3040;margin-bottom:14px">Upload Logo Image</div>' +
+      '<div style="font-size:14px;font-weight:700;color:#003055;margin-bottom:14px">Upload Logo Image</div>' +
       '<div id="logo-current-wrap"></div>' +
       '<div id="logo-drop-zone" style="border:2px dashed #b0c8d8;border-radius:6px;padding:28px 16px;text-align:center;cursor:pointer;background:#f8fbfd;transition:border-color .15s,background .15s">' +
         '<div style="font-size:30px;margin-bottom:6px">🖼️</div>' +
@@ -1449,7 +1509,7 @@ function openLogoUploadModal() {
   }
 
   // Drag & drop
-  dropZone.addEventListener('dragover',  function(e) { e.preventDefault(); dropZone.style.borderColor='#2178a0'; dropZone.style.background='#e8f3fa'; });
+  dropZone.addEventListener('dragover',  function(e) { e.preventDefault(); dropZone.style.borderColor='#0480C8'; dropZone.style.background='#e8f3fa'; });
   dropZone.addEventListener('dragleave', function()  { dropZone.style.borderColor='#b0c8d8'; dropZone.style.background='#f8fbfd'; });
   dropZone.addEventListener('drop', function(e) {
     e.preventDefault(); dropZone.style.borderColor='#b0c8d8'; dropZone.style.background='#f8fbfd';
@@ -1476,7 +1536,7 @@ function openEditPub(idx) {
   var form = document.createElement('div');
   form.id = 'pub-edit-form';
   form.style.cssText = 'background:#f4f8fb;border:1px solid #dce8f0;border-radius:6px;padding:14px 16px;margin-top:10px';
-  form.innerHTML = '<strong style="font-size:13px;color:#1c3040">' + title + '</strong>' +
+  form.innerHTML = '<strong style="font-size:13px;color:#003055">' + title + '</strong>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-top:10px">' +
     '<div class="fg"><label>Display Name</label><input id="pe-name" value="' + escA(p.name) + '" placeholder="e.g. Politico"></div>' +
     '<div class="fg"><label>Domain (for logo)</label><input id="pe-domain" value="' + escA(p.domain) + '" placeholder="e.g. politico.com"></div>' +
@@ -1568,7 +1628,10 @@ function importSettingsFile(e) {
     try {
       var d = JSON.parse(ev.target.result);
       if (!d.theme || !d.typography) throw new Error('Invalid settings file.');
-      settings = d; applySettings(); saveSettings();
+      settings = d;
+      // Patch any missing importKeys against DEFAULT_TEMPLATE
+      settings.defaultTemplate = mergeTemplateKeys(settings.defaultTemplate, DEFAULT_TEMPLATE);
+      applySettings(); saveSettings();
       // repopulate sidebar inputs without toggling open state
       document.getElementById('s-header-bg').value = settings.theme.headerBg;
       document.getElementById('s-accent').value     = settings.theme.accentColor;
@@ -1579,6 +1642,14 @@ function importSettingsFile(e) {
       document.getElementById('s-card-hl').value       = settings.typography.cardHlSize;
       document.getElementById('s-card-cm').value       = settings.typography.cardCmSize;
       document.getElementById('s-card-cm-align').value = settings.typography.cardCmAlign || 'left';
+      // Also patch import keys on the currently live modules so this session
+      // immediately reflects the imported template without needing a page reload.
+      var tpl = settings.defaultTemplate || DEFAULT_TEMPLATE;
+      modules.forEach(function(m, i) {
+        if (!m.importKey && tpl[i] && tpl[i].type === m.type && tpl[i].importKey) {
+          m.importKey = tpl[i].importKey;
+        }
+      });
       renderPubTable(); render(); alert('✓ Settings imported.');
     } catch(err) { alert('Import error: ' + err.message); }
   };
@@ -1595,50 +1666,123 @@ function handleXlImport(e) {
   var reader = new FileReader();
   reader.onload = function(ev) {
     try {
-      var wb   = XLSX.read(ev.target.result, {type:'binary'});
-      var ws   = wb.Sheets[wb.SheetNames[0]];
-      var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
-      if (!rows.length) { alert('No data found.'); return; }
-      var norm = rows.map(function(r) {
+      var wb = XLSX.read(ev.target.result, {type:'binary'});
+
+      // Read ALL sheets (skip Instructions) and pool rows together
+      var allRows = [];
+      wb.SheetNames.forEach(function(sheetName) {
+        if (/instructions/i.test(sheetName)) return;
+        var ws = wb.Sheets[sheetName];
+        var sheetRows = XLSX.utils.sheet_to_json(ws, {defval:''});
+        allRows = allRows.concat(sheetRows);
+      });
+      if (!allRows.length) { alert('No data found.'); return; }
+
+      // Normalize keys and filter out blank/notes rows
+      var norm = [];
+      allRows.forEach(function(r) {
         var out = {};
         Object.keys(r).forEach(function(k) { out[k.toLowerCase().trim()] = r[k]; });
-        return out;
+        var t = String(out['type']||'').trim();
+        // Skip blank type rows and inline notes rows
+        if (!t || t.charAt(0) === '-' || /^notes/i.test(t)) return;
+        norm.push(out);
       });
 
+      // Group by type value
       var groups = {};
       norm.forEach(function(r) {
         var t = String(r['type']||'').toLowerCase().trim();
-        if (!groups[t]) groups[t] = []; groups[t].push(r);
+        if (!groups[t]) groups[t] = [];
+        groups[t].push(r);
       });
+
       var total = 0;
       modules.forEach(function(mod) {
-        var key  = (mod.importKey||'').toLowerCase().trim();
+        var key = (mod.importKey||'').toLowerCase().trim();
+        if (!key) return;
         var rows = groups[key]; if (!rows || !rows.length) return;
+
+        // ── Hero Grid: append new cards, skip duplicates ──
         if (mod.type === 'major-grid') {
-          mod.cards = rows.map(function(r) {
-            return {
-              publication: String(r['publication']||''),
-              headlines: r['headline'] ? [{text:String(r['headline']),url:String(r['url']||'')}] : [],
-              commentary: String(r['umv']||r['commentary']||'')
-            };
-          });
-          total += rows.length;
-        }
-        if (mod.type === 'minor-table') {
-          mod.rows = []; mod.additionalPubs = [];
+          if (!mod.cards) mod.cards = [];
           rows.forEach(function(r) {
-            var rowType = String(r['row_type']||'').trim();
-            if (rowType === '+') {
-              mod.additionalPubs.push({name:String(r['publication']||''), url:String(r['url']||'')});
-            } else {
-              mod.rows.push({publication:String(r['publication']||''),headline:String(r['headline']||''),url:String(r['url']||'')});
+            var pub = String(r['publication']||'');
+            var hl  = String(r['headline']||'');
+            // Duplicate check: same publication + same headline
+            var isDupe = mod.cards.some(function(c) {
+              return c.publication.toLowerCase() === pub.toLowerCase() &&
+                     (c.headlines||[]).some(function(h) { return h.text.toLowerCase() === hl.toLowerCase(); });
+            });
+            if (!isDupe) {
+              mod.cards.push({
+                publication: pub,
+                headlines: hl ? [{text:hl, url:String(r['url']||'')}] : [],
+                commentary: String(r['umv']||r['commentary']||'')
+              });
+              total++;
             }
           });
-          total += rows.length;
+        }
+
+        // ── Table: append new rows, skip duplicates ──
+        if (mod.type === 'minor-table') {
+          if (!mod.rows) mod.rows = [];
+          if (!mod.additionalPubs) mod.additionalPubs = [];
+          rows.forEach(function(r) {
+            var pub = String(r['publication']||'');
+            var hl  = String(r['headline']||'');
+            var rowType = String(r['row_type']||'').trim();
+            if (rowType === '+') {
+              var isDupe = mod.additionalPubs.some(function(p) {
+                return p.name.toLowerCase() === pub.toLowerCase();
+              });
+              if (!isDupe) { mod.additionalPubs.push({name:pub, url:String(r['url']||'')}); total++; }
+            } else {
+              var isDupe = mod.rows.some(function(row) {
+                return row.publication.toLowerCase() === pub.toLowerCase() &&
+                       row.headline.toLowerCase() === hl.toLowerCase();
+              });
+              if (!isDupe) {
+                mod.rows.push({publication:pub, headline:hl, url:String(r['url']||'')});
+                total++;
+              }
+            }
+          });
+        }
+
+        // ── Stats: replace all items ──
+        if (mod.type === 'stats') {
+          var statRows = rows.filter(function(r) { return r['label'] || r['value']; });
+          if (statRows.length) {
+            mod.items = statRows.map(function(r) {
+              return { value: String(r['value']||'0'), label: String(r['label']||'') };
+            });
+            total += statRows.length;
+          }
+        }
+
+        // ── Header: replace title/date ──
+        if (mod.type === 'header') {
+          var r0 = rows[0];
+          if (r0['title']) mod.title = String(r0['title']);
+          if (r0['date'])  mod.date  = String(r0['date']);
+          total++;
+        }
+
+        // ── Text block: replace html content ──
+        if (mod.type === 'html-block') {
+          var r0 = rows[0];
+          var content = String(r0['html'] || r0['content'] || '');
+          if (content) {
+            mod.html = /^\s*</.test(content) ? content : '<p>' + content + '</p>';
+            total++;
+          }
         }
       });
+
       render();
-      if (total === 0) alert('No rows were imported. Check that the "type" column values in your spreadsheet match the Import Keys on the modules in the document.');
+      if (total === 0) alert('No rows imported. Check that the "type" column values in your spreadsheet match the Import Keys shown on each module.');
     } catch(err) { alert('Error reading spreadsheet: ' + err.message); }
   };
   reader.readAsBinaryString(file);
@@ -1649,8 +1793,11 @@ function handleXlImport(e) {
    ---------------------------------------------------------------- */
 function doDownloadTemplate() {
   var wb = XLSX.utils.book_new();
+
+  /* ── Sheet 1: Coverage (hero grid + tables) ── */
   var cvg = [
     ['type','publication','headline','url','commentary','row_type'],
+    ['featured','AP','TSA agents are working without pay at US airports','https://apnews.com/example','41.2 million Total Potential Reach',''],
     ['featured','Politico','Shutdown fallout incoming?','https://politico.com/example','20.4 million Total Potential Reach',''],
     ['featured','The Hill','Here\'s how the DHS shutdown is impacting air travel, TSA','https://thehill.com/example','21.1 million Total Potential Reach',''],
     ['domestic','Newsweek','DHS Shutdown Forces TSA Workers to Screen Passengers Unpaid','https://newsweek.com/example','',''],
@@ -1660,19 +1807,59 @@ function doDownloadTemplate() {
     ['international','The Guardian','Limited government shutdown likely to linger','https://theguardian.com/example','',''],
   ];
   var wsCvg = XLSX.utils.aoa_to_sheet(cvg);
-  wsCvg['!cols'] = [{wch:14},{wch:24},{wch:56},{wch:42},{wch:32},{wch:10}];
+  wsCvg['!cols'] = [{wch:14},{wch:24},{wch:58},{wch:42},{wch:32},{wch:10}];
   XLSX.utils.book_append_sheet(wb, wsCvg, 'Coverage');
-  var instr = [
-    ['Column','Description','Required?'],
-    ['type','Matches the Import Key on the module. e.g. featured, domestic, international.','Yes'],
-    ['publication','Publication name. Logo and font auto-detected from Publications presets in Settings.','Yes'],
-    ['headline','Article headline text.','Yes for regular rows'],
-    ['url','Full article URL.','Recommended'],
-    ['commentary','Reach or commentary text — displayed as-is under the headline in Hero Grid cards.','Optional'],
-    ['row_type','Leave blank for a regular table row. Enter + to add this publication to the "Additional coverage in…" line instead.','Optional'],
+
+  /* ── Sheet 2: Stats ── */
+  var stats = [
+    ['type','value','label'],
+    ['summary_stats','41.2M','Total Potential Reach'],
+    ['summary_stats','12','Unique Stories'],
+    ['summary_stats','18','Total Placements'],
   ];
-  var wsI = XLSX.utils.aoa_to_sheet(instr); wsI['!cols'] = [{wch:14},{wch:74},{wch:18}];
-  XLSX.utils.book_append_sheet(wb, wsI, 'Instructions');
+  var wsStats = XLSX.utils.aoa_to_sheet(stats);
+  wsStats['!cols'] = [{wch:18},{wch:16},{wch:32}];
+  XLSX.utils.book_append_sheet(wb, wsStats, 'Stats');
+
+  /* ── Sheet 3: Text & Titles ── */
+  var text = [
+    ['type','title','date','html'],
+    ['doc_title','MEDIA COVERAGE WRAP: Q1 2026','April 2026',''],
+    ['intro_text','','','<p>The following coverage resulted from our Q1 outreach campaign.</p>'],
+    ['footer_text','','','<p style="font-size:12px;color:#777">Includes all mentions [start date] through [end date] EOD.</p>'],
+  ];
+  var wsText = XLSX.utils.aoa_to_sheet(text);
+  wsText['!cols'] = [{wch:18},{wch:40},{wch:16},{wch:64}];
+  XLSX.utils.book_append_sheet(wb, wsText, 'Text & Titles');
+
+  /* ── Sheet 4: Instructions ── */
+  var instr = [
+    ['Sheet','Column','Description'],
+    ['Coverage','type','Matches the Import Key on a Hero Grid or Table module. e.g. featured, domestic, international.'],
+    ['Coverage','publication','Publication name. Logo and headline font are auto-matched from publication presets in Settings.'],
+    ['Coverage','headline','The article headline.'],
+    ['Coverage','url','Full article URL (optional but recommended).'],
+    ['Coverage','commentary','Reach or commentary text shown under the headline on Hero Grid cards.'],
+    ['Coverage','row_type','Leave blank for a normal row. Enter + to add this pub to the "Additional coverage in…" summary line instead.'],
+    ['','',''],
+    ['Stats','type','Matches the Import Key on a Stats Row module. e.g. summary_stats.'],
+    ['Stats','value','The large number/text (e.g. 41.2M, $1.2B, 847).'],
+    ['Stats','label','The small caption below the number (e.g. Total Potential Reach).'],
+    ['','',''],
+    ['Text & Titles','type','Matches the Import Key on a Header or Text module. e.g. doc_title, intro_text.'],
+    ['Text & Titles','title','Header module title text.'],
+    ['Text & Titles','date','Header module date (optional).'],
+    ['Text & Titles','html','Text module content. HTML tags are allowed; plain text is auto-wrapped in <p> tags.'],
+    ['','',''],
+    ['Import behavior','',''],
+    ['- Header and Text modules: content is replaced with the spreadsheet value.','',''],
+    ['- Stats modules: all items are replaced with the spreadsheet rows.','',''],
+    ['- Hero Grid and Table modules: new rows are appended. Duplicates (same pub + headline) are skipped.','',''],
+  ];
+  var wsInstr = XLSX.utils.aoa_to_sheet(instr);
+  wsInstr['!cols'] = [{wch:18},{wch:16},{wch:80}];
+  XLSX.utils.book_append_sheet(wb, wsInstr, 'Instructions');
+
   XLSX.writeFile(wb, 'PR_MediaWrap_Template.xlsx');
 }
 
@@ -1779,9 +1966,20 @@ function doPrint() {
 
   // #document is 780px = 8.125in. Letter is 8.5in.
   // hMargin 0.15in each side → 8.2in content, no clipping.
+  // Derive filename from the header module title, falling back to default
+  var headerMod = modules.find(function(m) { return m.type === 'header' && m.title; });
+  var pdfFilename = (headerMod && headerMod.title.trim())
+    ? headerMod.title.trim()
+        .replace(/[^a-z0-9 _-]/gi, '')   // strip special chars
+        .replace(/\s+/g, '_')             // spaces → underscores
+        .replace(/_+/g, '_')              // collapse runs
+        .replace(/^_|_$/g, '')            // trim leading/trailing underscores
+        .toLowerCase() + '.pdf'
+    : 'media-wrap.pdf';
+
   var opt = {
     margin:      [0.35, 0.15],
-    filename:    'media-wrap.pdf',
+    filename:    pdfFilename,
     image:       { type: 'jpeg', quality: 0.97 },
     html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff',
                    logging: false, scrollX: 0, scrollY: 0 },
@@ -1789,17 +1987,33 @@ function doPrint() {
     pagebreak:   { mode: ['css', 'legacy'], avoid: ['.major-card', '.mod-minor-table'] },
   };
 
+  // Before html2canvas: swap box-shadow → real border on each card so cards
+  // remain visually defined in the rasterised output (html2canvas ignores box-shadow).
+  var cardRestores = [];
+  doc.querySelectorAll('.major-card').forEach(function(card) {
+    var origShadow = card.style.boxShadow;
+    var origBorder = card.style.border;
+    card.style.boxShadow = 'none';
+    card.style.border = '1px solid #d0d4d8';
+    cardRestores.push(function() {
+      card.style.boxShadow = origShadow;
+      card.style.border = origBorder;
+    });
+  });
+
   // Rasterise any SVG logos before html2canvas sees them, then restore afterwards
   convertSvgImgsForExport(doc).then(function(restoreFns) {
     html2pdf().set(opt).from(doc).output('blob')
       .then(function(blob) {
         restoreFns.forEach(function(fn) { fn(); });
+        cardRestores.forEach(function(fn) { fn(); });
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a'); a.href = url; a.download = 'media-wrap.pdf'; a.click();
         setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
       })
       .catch(function(err) {
         restoreFns.forEach(function(fn) { fn(); });
+        cardRestores.forEach(function(fn) { fn(); });
         console.error('html2pdf error:', err); window.print();
       })
       .then(restore, restore);
