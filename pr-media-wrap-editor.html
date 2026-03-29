@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR Media Wrap Editor</title>
+
+<!-- Google Fonts: publication-matched headline typefaces -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Oswald:wght@400;500;700&family=Playfair+Display:ital,wght@0,400;0,700&family=Roboto+Condensed:wght@400;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+/* =================================================================
+   CSS CUSTOM PROPERTIES — driven by Settings
+   ================================================================= */
+:root {
+  --header-bg:        #1c4f63;
+  --accent:           #2178a0;
+  --stat-value-size:  52px;
+  --stat-label-size:  11.5px;
+  --sec-heading-size: 17px;
+  --table-text-size:  12.5px;
+  --card-hl-size:     12.5px;
+  --card-cm-size:     11.5px;
+  --card-cm-align:    left;
+  --header-text-size: 10.5px;
+}
+
+/* =================================================================
+   RESET & BASE
+   ================================================================= */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  background: #e8eaed; color: #222; font-size: 14px;
+}
+
+/* =================================================================
+   TOOLBAR
+   ================================================================= */
+#toolbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: #1e2a35; height: 52px;
+  display: flex; align-items: center; padding: 0 14px; gap: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35); overflow-x: auto;
+}
+#toolbar-brand {
+  font-size: 12px; font-weight: 700; letter-spacing: .5px;
+  color: #a8c8d8; white-space: nowrap; margin-right: 4px; flex-shrink: 0;
+}
+.tb-sep { width: 1px; height: 26px; background: rgba(255,255,255,.15); flex-shrink: 0; }
+
+/* Icon-only toolbar buttons with tooltips via title */
+.tb-btn {
+  width: 34px; height: 32px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.07); color: #e8edf0;
+  border-radius: 5px; cursor: pointer; font-size: 16px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .13s; font-family: inherit;
+  position: relative;
+}
+.tb-btn:hover { background: rgba(255,255,255,.18); }
+.tb-btn.accent { background: #2478a0; border-color: #1d6a8e; }
+.tb-btn.accent:hover { background: #1d6a8e; }
+
+#add-mod-select {
+  padding: 5px 8px; border-radius: 5px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.07); color: #e8edf0;
+  font-size: 12px; cursor: pointer; flex-shrink: 0; font-family: inherit;
+  height: 32px;
+}
+#add-mod-select option { background: #1e2a35; }
+
+/* =================================================================
+   PAGE / DOCUMENT
+   ================================================================= */
+#page-wrap {
+  margin-top: 52px; margin-right: 0; padding: 32px 80px;
+  display: flex; justify-content: center;
+  transition: margin-right .22s ease;
+}
+body.sidebar-open #page-wrap { margin-right: 340px; }
+#document {
+  background: #fff; width: 780px; min-height: 900px;
+  box-shadow: 0 2px 24px rgba(0,0,0,.18); position: relative;
+}
+
+/* =================================================================
+   MODULE WRAPPER & HOVER CONTROLS
+   ================================================================= */
+.mod-wrap { position: relative; }
+.mod-wrap:hover > .mod-ctrl-bar { opacity: 1; pointer-events: all; }
+
+.mod-ctrl-bar {
+  position: absolute; top: 0; right: 0;
+  background: rgba(20,40,55,.9); border-radius: 0 0 0 6px;
+  padding: 3px 5px; display: flex; gap: 3px;
+  opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 50;
+}
+.mod-ctrl-bar button {
+  height: 22px; min-width: 22px; border: none; border-radius: 3px;
+  background: rgba(255,255,255,.12); color: #ccc;
+  cursor: pointer; font-size: 13px; padding: 0 5px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s; font-family: inherit; white-space: nowrap;
+}
+.mod-ctrl-bar button:hover { background: rgba(255,255,255,.28); color: #fff; }
+.mod-ctrl-bar button.del:hover { background: #c0392b; color: #fff; }
+
+/* Import-key strip */
+.import-key-row {
+  display: none; align-items: center; gap: 6px;
+  padding: 3px 10px 4px; background: #f0f4f7;
+  border-bottom: 1px solid #e0e6ea;
+  font-size: 10px; color: #7a90a0; text-transform: uppercase; letter-spacing: .6px;
+}
+.mod-wrap:hover > .import-key-row { display: flex; }
+.import-key-row input {
+  padding: 2px 6px; border: 1px solid #c8d4dc; border-radius: 3px;
+  font-size: 11px; color: #334; background: #fff; width: 120px; font-family: inherit;
+}
+
+/* =================================================================
+   MODULE: HEADER BAR
+   ================================================================= */
+.mod-header {
+  background: var(--header-bg); color: #fff; padding: 10px 20px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.mod-header-title {
+  font-size: var(--header-text-size); font-weight: 600;
+  letter-spacing: 1.8px; text-transform: uppercase;
+}
+.mod-header-date { font-size: var(--header-text-size); letter-spacing: .8px; }
+
+/* =================================================================
+   MODULE: STATS ROW
+   ================================================================= */
+.mod-stats { padding: 10px 28px 22px; display: flex; align-items: flex-end; gap: 48px; flex-wrap: wrap; }
+.stat-wrap { position: relative; display: inline-flex; flex-direction: column; }
+.stat-value { font-size: var(--stat-value-size); font-weight: 300; line-height: 1; color: #111; letter-spacing: -1.5px; }
+.stat-label { font-size: var(--stat-label-size); color: #777; margin-top: 5px; }
+.stat-rm {
+  position: absolute; top: -6px; right: -10px;
+  width: 17px; height: 17px; background: #c0392b; color: #fff;
+  border: none; border-radius: 50%; cursor: pointer; font-size: 10px;
+  display: none; align-items: center; justify-content: center;
+}
+.stat-wrap:hover .stat-rm { display: flex; }
+.stat-add-btn {
+  align-self: center; width: 30px; height: 30px; border-radius: 50%;
+  border: 2px dashed #b8c8d4; background: none; cursor: pointer;
+  font-size: 20px; color: #b8c8d4; display: none;
+  align-items: center; justify-content: center; line-height: 1;
+}
+.stat-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* =================================================================
+   MODULE: SECTION HEADING
+   ================================================================= */
+.mod-sec-heading { padding: 18px 28px 6px; font-size: var(--sec-heading-size); font-weight: 700; color: #111; }
+
+/* =================================================================
+   MODULE: HERO GRID
+   ================================================================= */
+.mod-major-grid { padding: 4px 28px 22px; }
+.major-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #d4d8dc; }
+.major-card {
+  padding: 20px 18px 16px; border: .5px solid #d4d8dc;
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 10px; position: relative; min-height: 150px;
+}
+.major-card-logo-area { width: 100%; display: flex; align-items: center; justify-content: center; min-height: 48px; }
+.major-card-logo { max-height: 44px; max-width: 160px; object-fit: contain; }
+.major-card-logo-text { font-size: 24px; font-weight: 800; text-align: center; }
+.major-card-headlines { width: 100%; display: flex; flex-direction: column; gap: 3px; }
+.major-card-headline {
+  font-size: var(--card-hl-size); font-weight: 700; color: #111;
+  text-decoration: none; line-height: 1.35; display: block;
+}
+.major-card-headline:hover { color: var(--accent); }
+.major-card-commentary { font-size: var(--card-cm-size); color: #555; margin-top: auto; text-align: var(--card-cm-align); width: 100%; }
+.card-btns {
+  position: absolute; bottom: 7px; right: 7px;
+  display: none; gap: 4px;
+}
+.card-rm-btn {
+  position: absolute; top: 6px; right: 6px;
+  width: 18px; height: 18px; background: #c0392b; color: #fff;
+  border: none; border-radius: 50%; cursor: pointer; font-size: 10px;
+  display: none; align-items: center; justify-content: center;
+}
+.card-edit-btn {
+  padding: 2px 6px; font-size: 13px; background: #eef2f5;
+  border: 1px solid #ccd4da; border-radius: 3px; cursor: pointer; color: #556;
+  font-family: inherit;
+}
+.card-edit-btn:hover { background: #dde3e7; }
+.major-card:hover .card-btns,
+.major-card:hover .card-rm-btn { display: flex; }
+.major-card-add {
+  grid-column: 1 / -1; padding: 12px;
+  border: 1.5px dashed #ccd4da; background: #fafbfc;
+  cursor: pointer; text-align: center; color: #99aab8;
+  font-size: 12px; display: none; font-family: inherit;
+}
+.major-card-add:hover { border-color: var(--accent); color: var(--accent); background: #f0f6fa; }
+
+/* =================================================================
+   MODULE: TABLE
+   ================================================================= */
+.mod-minor-table { padding: 2px 28px 20px; }
+.minor-tbl { width: 100%; border-collapse: collapse; table-layout: auto; }
+.minor-tbl tr:nth-child(even) td { background: #f7f8f9; }
+.minor-tbl td { padding: 7px 10px; font-size: var(--table-text-size); vertical-align: middle; line-height: 1.4; }
+.minor-td-pub { white-space: nowrap; text-align: right; color: #999; padding-right: 14px; width: 1px; }
+.minor-td-hl { width: auto; }
+.hl-inner { display: flex; align-items: flex-start; gap: 8px; }
+.hl-text { flex: 1; }
+.hl-text a { color: #333; text-decoration: none; }
+.hl-text a:hover { color: var(--accent); text-decoration: underline; }
+.row-btns { display: none; gap: 3px; flex-shrink: 0; align-items: center; }
+.minor-tbl tr:hover .row-btns { display: flex; }
+.row-btn {
+  padding: 2px 6px; font-size: 13px; border-radius: 3px;
+  border: 1px solid #cdd8e0; background: #f0f4f7;
+  color: #556; cursor: pointer; font-family: inherit; line-height: 1;
+}
+.row-btn:hover { background: #dde3e7; }
+.row-btn.rm:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
+.minor-additional { padding: 5px 10px 2px; font-size: var(--table-text-size); color: #333; }
+.minor-additional a { color: var(--accent); text-decoration: none; }
+.minor-additional a:hover { text-decoration: underline; }
+.add-row-btn {
+  margin-top: 5px; width: 100%; padding: 7px;
+  border: 1.5px dashed #ccd4da; background: none; cursor: pointer;
+  color: #aab8c2; font-size: 11px; border-radius: 3px;
+  display: none; font-family: inherit;
+}
+.add-row-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* =================================================================
+   MODULE: TEXT (html-block)
+   ================================================================= */
+.mod-html-block { padding: 14px 28px; }
+.html-block-rendered {
+  font-size: 13.5px; line-height: 1.55; color: #333; min-height: 20px; outline: none;
+}
+.html-block-rendered a { color: var(--accent); text-decoration: none; }
+.html-block-rendered a:hover { text-decoration: underline; }
+.html-block-rendered p { margin: 0; }
+.html-block-rendered p + p { margin-top: 8px; }
+body.edit-mode .html-block-rendered { cursor: text; }
+body.edit-mode .html-block-rendered:hover { background: rgba(33,120,160,.04); border-radius: 3px; }
+body.edit-mode .html-block-rendered:focus {
+  background: rgba(33,120,160,.06);
+  box-shadow: inset 0 0 0 1.5px rgba(33,120,160,.25); border-radius: 3px; outline: none;
+}
+
+/* =================================================================
+   CONTENTEDITABLE (non-html-block)
+   ================================================================= */
+body.edit-mode [contenteditable]:not(.html-block-rendered):hover { background: rgba(33,120,160,.04); border-radius: 2px; }
+body.edit-mode [contenteditable]:not(.html-block-rendered):focus {
+  background: rgba(33,120,160,.07); box-shadow: inset 0 -1.5px 0 var(--accent); border-radius: 2px; outline: none;
+}
+
+/* =================================================================
+   EDIT-MODE SHOW / HIDE
+   ================================================================= */
+body.edit-mode .stat-add-btn,
+body.edit-mode .major-card-add,
+body.edit-mode .add-row-btn { display: flex; }
+
+body:not(.edit-mode) .mod-ctrl-bar,
+body:not(.edit-mode) .import-key-row,
+body:not(.edit-mode) .stat-add-btn,
+body:not(.edit-mode) .stat-rm,
+body:not(.edit-mode) .major-card-add,
+body:not(.edit-mode) .card-btns,
+body:not(.edit-mode) .card-rm-btn,
+body:not(.edit-mode) .add-row-btn,
+body:not(.edit-mode) .row-btns { display: none !important; }
+
+/* =================================================================
+   MODALS (shared)
+   ================================================================= */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 2000; display: none; align-items: center; justify-content: center; }
+.overlay.open { display: flex; }
+.modal {
+  background: #fff; border-radius: 8px; padding: 22px 24px 20px;
+  width: 500px; max-width: 94vw; max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0,0,0,.28);
+}
+.modal.wide { width: 680px; }
+.modal.x-wide { width: 820px; }
+.modal h3 { font-size: 15px; color: #1c3040; margin-bottom: 16px; }
+.modal-x { float: right; background: none; border: none; font-size: 19px; cursor: pointer; color: #aaa; margin: -2px -2px 0 0; }
+.modal-x:hover { color: #333; }
+.fg { margin-bottom: 13px; }
+.fg label { display: block; font-size: 11px; font-weight: 700; color: #556; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
+.fg input, .fg textarea, .fg select {
+  width: 100%; padding: 7px 9px; border: 1px solid #cdd8e0;
+  border-radius: 4px; font-size: 13px; color: #333; font-family: inherit;
+}
+.fg textarea { resize: vertical; }
+.fg input[type="color"] { height: 36px; padding: 3px 4px; cursor: pointer; }
+.fg input[type="number"] { width: 80px; }
+.fg input:focus, .fg textarea:focus, .fg select:focus { outline: none; border-color: var(--accent); }
+.fg .hint { font-size: 10.5px; color: #aaa; margin-top: 3px; line-height: 1.4; }
+.modal-footer { display: flex; gap: 8px; align-items: center; margin-top: 16px; }
+.btn { padding: 7px 14px; border-radius: 4px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; white-space: nowrap; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { filter: brightness(.9); }
+.btn-secondary { background: #ecf0f2; color: #556; }
+.btn-secondary:hover { background: #dde3e7; }
+.btn-link { background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; padding: 0; font-family: inherit; }
+.btn-link:hover { text-decoration: underline; }
+
+/* =================================================================
+   SETTINGS SIDEBAR
+   ================================================================= */
+#settings-sidebar {
+  position: fixed; top: 52px; right: 0; bottom: 0; width: 340px;
+  background: #fff; border-left: 1px solid #dde4e8;
+  box-shadow: -4px 0 20px rgba(0,0,0,.12);
+  transform: translateX(100%);
+  transition: transform .22s ease;
+  z-index: 900;
+  display: flex; flex-direction: column;
+}
+body.sidebar-open #settings-sidebar { transform: translateX(0); }
+#ssb-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 16px; border-bottom: 1px solid #e4e8ec; flex-shrink: 0;
+  font-size: 13px; font-weight: 700; color: #1c3040;
+}
+#ssb-header button {
+  background: none; border: none; cursor: pointer;
+  font-size: 18px; color: #aaa; padding: 0 2px; line-height: 1;
+}
+#ssb-header button:hover { color: #333; }
+#ssb-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
+#ssb-footer {
+  border-top: 1px solid #e4e8ec; padding: 10px 16px;
+  display: flex; gap: 8px; flex-shrink: 0;
+}
+.stab-row { display: flex; gap: 2px; border-bottom: 1px solid #e4e8ec; margin-bottom: 16px; }
+.stab {
+  padding: 6px 11px; border: none; border-bottom: 2px solid transparent;
+  background: none; cursor: pointer; font-size: 12px; color: #778;
+  font-family: inherit; margin-bottom: -1px; transition: color .12s; white-space: nowrap;
+}
+.stab:hover { color: #334; }
+.stab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.stab-panel { display: none; }
+.stab-panel.active { display: block; }
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+
+/* Publications table in settings */
+.pub-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.pub-tbl th { font-size: 10px; text-transform: uppercase; color: #889; letter-spacing: .5px; padding: 5px 8px; text-align: left; border-bottom: 1px solid #e4e8ec; }
+.pub-tbl td { padding: 5px 8px; border-bottom: 1px solid #f0f4f7; vertical-align: middle; }
+.pub-tbl tr:last-child td { border-bottom: none; }
+.pub-tbl input { width: 100%; padding: 3px 6px; border: 1px solid #cdd8e0; border-radius: 3px; font-size: 11px; font-family: inherit; }
+.pub-tbl input[type="color"] { width: 36px; height: 26px; padding: 1px 2px; cursor: pointer; }
+.pub-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: middle; border: 1px solid #ddd; }
+.font-preview { font-size: 12px; color: #334; }
+.pub-row-btns { display: flex; gap: 3px; }
+.pub-row-btn {
+  width: 22px; height: 22px; border: 1px solid #cdd8e0; background: #f4f6f8;
+  border-radius: 3px; cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center; font-family: inherit;
+}
+.pub-row-btn:hover { background: #dde3e7; }
+.pub-row-btn.rm:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
+
+/* Template preview list */
+.template-preview-list { font-size: 12px; color: #556; line-height: 2; }
+.template-preview-list span { display: inline-block; background: #f0f4f7; border-radius: 3px; padding: 1px 7px; margin: 1px 3px; }
+
+/* =================================================================
+   PRINT
+   ================================================================= */
+@page { size: letter; margin: 0.6in 0.65in; }
+@media print {
+  body { background: #fff; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  #toolbar, #settings-sidebar { display: none !important; }
+  #page-wrap { margin-top: 0 !important; margin-right: 0 !important; padding: 0; }
+  #document { box-shadow: none; width: 100%; min-height: 0; }
+  .mod-ctrl-bar, .import-key-row, .stat-add-btn, .stat-rm,
+  .major-card-add, .card-btns, .card-rm-btn, .add-row-btn, .row-btns { display: none !important; }
+  [contenteditable], .html-block-rendered { background: none !important; box-shadow: none !important; }
+  .major-card { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .major-grid { break-inside: avoid; }
+  .mod-minor-table { break-inside: avoid; }
+}
+</style>
+</head>
+<body class="edit-mode">
+
+<!-- ================================================================
+     TOOLBAR
+     ================================================================ -->
+<div id="toolbar">
+  <span id="toolbar-brand">PR Media Wrap</span>
+  <div class="tb-sep"></div>
+
+  <select id="add-mod-select" title="Add a module to the document">
+    <option value="">＋ Add Module</option>
+    <option value="header">Header Bar</option>
+    <option value="stats">Stats Row</option>
+    <option value="section-heading">Section Heading</option>
+    <option value="major-grid">Hero Grid</option>
+    <option value="minor-table">Table</option>
+    <option value="html-block">Text</option>
+  </select>
+
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-import" title="Import from Excel spreadsheet">📥</button>
+  <button class="tb-btn" id="btn-template" title="Download Excel template">📄</button>
+
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-save" title="Save project as JSON">💾</button>
+  <button class="tb-btn" id="btn-load" title="Load project from JSON">📂</button>
+
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-settings" title="Settings">⚙️</button>
+
+  <div class="tb-sep"></div>
+  <button class="tb-btn accent" id="btn-print" title="Export PDF">🖨️</button>
+</div>
+
+<!-- DOCUMENT -->
+<div id="page-wrap"><div id="document"></div></div>
+
+<!-- Hidden file inputs -->
+<input type="file" id="xl-input"              accept=".xlsx,.xls" style="display:none">
+<input type="file" id="json-input"            accept=".json"      style="display:none">
+<input type="file" id="settings-import-input" accept=".json"      style="display:none">
+
+<!-- ================================================================
+     CARD MODAL
+     ================================================================ -->
+<div id="card-overlay" class="overlay">
+  <div class="modal">
+    <button class="modal-x" id="card-modal-x">✕</button>
+    <h3 id="card-modal-title">Add Coverage Card</h3>
+    <div class="fg">
+      <label>Publication Name</label>
+      <input id="cp-pub" type="text" placeholder="e.g. Politico">
+    </div>
+    <div style="margin-bottom:13px;padding:8px 10px;background:#f4f7fa;border-radius:5px;display:flex;align-items:center;gap:12px">
+      <img  id="cp-logo-img"  src="" style="max-height:34px;max-width:130px;display:none"
+        onerror="this.style.display='none';document.getElementById('cp-logo-text').style.display='block'">
+      <span id="cp-logo-text" style="font-size:18px;font-weight:800;display:none"></span>
+      <span id="cp-logo-none" style="font-size:11px;color:#aaa">Logo preview — enter a publication name above</span>
+    </div>
+    <div id="cp-headlines-wrap"></div>
+    <button class="btn-link" id="cp-add-hl" style="margin-bottom:12px">+ Add another headline</button>
+    <div class="fg">
+      <label>Commentary</label>
+      <input id="cp-commentary" type="text" placeholder="e.g. 41.2 million Total Potential Reach">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="card-cancel-btn">Cancel</button>
+      <button class="btn btn-primary"   id="card-save-btn">Save Card</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     ROW MODAL
+     ================================================================ -->
+<div id="row-overlay" class="overlay">
+  <div class="modal">
+    <button class="modal-x" id="row-modal-x">✕</button>
+    <h3 id="row-modal-title">Add Row</h3>
+    <div class="fg">
+      <label>Publication Name</label>
+      <input id="rp-pub" type="text" placeholder="e.g. Newsweek">
+    </div>
+    <div class="fg" id="rp-hl-group">
+      <label>Headline</label>
+      <input id="rp-hl" type="text" placeholder="Article headline…">
+    </div>
+    <div class="fg">
+      <label>URL</label>
+      <input id="rp-url" type="text" placeholder="https://…">
+    </div>
+    <div class="fg" id="rp-type-group">
+      <label>Row Type</label>
+      <select id="rp-type">
+        <option value="regular">Regular row</option>
+        <option value="additional">Additional — appears in "+ Additional coverage in…" line</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="row-cancel-btn">Cancel</button>
+      <button class="btn btn-primary"   id="row-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     HTML EDITOR MODAL
+     ================================================================ -->
+<div id="html-overlay" class="overlay">
+  <div class="modal wide">
+    <button class="modal-x" id="html-modal-x">✕</button>
+    <h3>Edit HTML Source</h3>
+    <div class="fg">
+      <label>HTML</label>
+      <textarea id="html-editor" rows="12"
+        style="font-family:'SFMono-Regular',Consolas,monospace;font-size:12px;line-height:1.6"
+        placeholder="<p>Your content here…</p>"></textarea>
+      <div class="hint">You can also click directly into the text block to type — this editor is for precise HTML control.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="html-cancel-btn">Cancel</button>
+      <button class="btn btn-primary"   id="html-save-btn">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SETTINGS SIDEBAR
+     ================================================================ -->
+<div id="settings-sidebar">
+  <div id="ssb-header">
+    <span>⚙️ Settings</span>
+    <button id="settings-x" title="Close settings">✕</button>
+  </div>
+  <div id="ssb-body">
+    <div class="stab-row">
+      <button class="stab active" data-stab="theme">Theme &amp; Type</button>
+      <button class="stab"        data-stab="pubs">Publications</button>
+      <button class="stab"        data-stab="tmpl">Template</button>
+    </div>
+
+    <!-- THEME & TYPOGRAPHY -->
+    <div id="stab-theme" class="stab-panel active">
+      <div class="settings-grid">
+        <div class="fg"><label>Header BG Color</label><input type="color" id="s-header-bg"></div>
+        <div class="fg"><label>Accent / Link Color</label><input type="color" id="s-accent"></div>
+        <div class="fg"><label>Stats Number (px)</label><input type="number" id="s-stat-val" min="24" max="120" style="width:72px"></div>
+        <div class="fg"><label>Stats Label (px)</label><input type="number" id="s-stat-lbl" min="8" max="24" style="width:72px"></div>
+        <div class="fg"><label>Section Heading (px)</label><input type="number" id="s-sec-head" min="12" max="36" style="width:72px"></div>
+        <div class="fg"><label>Table Text (px)</label><input type="number" id="s-tbl-txt" min="8" max="20" style="width:72px"></div>
+        <div class="fg"><label>Card Headline (px)</label><input type="number" id="s-card-hl" min="8" max="24" style="width:72px"></div>
+        <div class="fg"><label>Card Commentary (px)</label><input type="number" id="s-card-cm" min="8" max="20" style="width:72px"></div>
+        <div class="fg"><label>Commentary Align</label>
+          <select id="s-card-cm-align" style="width:100%">
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- PUBLICATIONS -->
+    <div id="stab-pubs" class="stab-panel">
+      <p style="font-size:11px;color:#889;margin-bottom:10px;line-height:1.5">
+        Controls auto-detected logos and headline fonts in Hero Grid cards.
+        Available fonts: <em>Oswald, Playfair Display, Libre Baskerville, Roboto Condensed, Source Sans 3</em>.
+      </p>
+      <div id="pub-table-wrap"></div>
+      <button class="btn btn-secondary" id="add-pub-btn" style="margin-top:10px;font-size:12px">＋ Add Publication</button>
+    </div>
+
+    <!-- DEFAULT TEMPLATE -->
+    <div id="stab-tmpl" class="stab-panel">
+      <p style="font-size:12px;color:#556;line-height:1.6">
+        The <strong>default template</strong> controls what modules appear when the editor first loads.
+        Captures module types, headings, and import keys — not cards or rows.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin:14px 0">
+        <button class="btn btn-primary"   id="save-tmpl-btn">Save Current as Default Template</button>
+        <button class="btn btn-secondary" id="reset-tmpl-btn">Reset to Factory Default</button>
+      </div>
+      <div id="tmpl-preview-wrap"></div>
+    </div>
+  </div>
+
+  <div id="ssb-footer">
+    <button class="btn btn-secondary" id="export-settings-btn" style="font-size:12px">Export JSON</button>
+    <button class="btn btn-secondary" id="import-settings-btn" style="font-size:12px">Import JSON</button>
+  </div>
+</div>
+
+<!-- ================================================================
+     JAVASCRIPT
+     ================================================================ -->
+<script>
+'use strict';
+
+/* ----------------------------------------------------------------
+   DEFAULT PUBLICATION PRESETS
+   ---------------------------------------------------------------- */
+var DEFAULT_PUBS = [
+  // name = display name; aliases = other spellings that should also match
+  // nameColor = headline text color; cardBg = card background color
+  { name:'AP',                    aliases:['Associated Press','AP News'],
+    domain:'apnews.com',              font:"'Roboto Condensed',sans-serif",                nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Politico',              aliases:[],
+    domain:'politico.com',            font:"'Oswald','Franklin Gothic Medium',sans-serif",  nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'The Hill',              aliases:['Hill'],
+    domain:'thehill.com',             font:"'Playfair Display',Georgia,serif",             nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Travel + Leisure',      aliases:['Travel and Leisure','Travel & Leisure'],
+    domain:'travelandleisure.com',    font:"'Playfair Display',Georgia,serif",             nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Newsweek',              aliases:[],
+    domain:'newsweek.com',            font:"'Oswald',sans-serif",                          nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'BBC',                   aliases:['BBC News'],
+    domain:'bbc.com',                 font:"'Source Sans 3','Helvetica Neue',sans-serif",  nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'The Guardian',          aliases:['Guardian'],
+    domain:'theguardian.com',         font:"'Libre Baskerville',Georgia,serif",            nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Reuters',               aliases:[],
+    domain:'reuters.com',             font:"'Libre Baskerville',Georgia,serif",            nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'CNN',                   aliases:[],
+    domain:'cnn.com',                 font:"'Source Sans 3',Helvetica,sans-serif",         nameColor:'#0c0c0c', cardBg:'#ffffff', logoUrl:'' },
+  { name:'New York Times',        aliases:['The New York Times','NYT','NYTimes','nytimes'],
+    domain:'nytimes.com',             font:"'Libre Baskerville',Georgia,serif",            nameColor:'#121212', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Washington Post',       aliases:['The Washington Post','WaPo'],
+    domain:'washingtonpost.com',      font:"'Playfair Display',Georgia,serif",             nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Wall Street Journal',   aliases:['The Wall Street Journal','WSJ'],
+    domain:'wsj.com',                 font:"'Libre Baskerville',Georgia,serif",            nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Bloomberg',             aliases:[],
+    domain:'bloomberg.com',           font:"'Source Sans 3',Helvetica,sans-serif",         nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Axios',                 aliases:[],
+    domain:'axios.com',               font:"'Oswald',sans-serif",                          nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Forbes',                aliases:[],
+    domain:'forbes.com',              font:"'Libre Baskerville',serif",                    nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'NPR',                   aliases:['National Public Radio'],
+    domain:'npr.org',                 font:"'Source Sans 3',sans-serif",                   nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Fox News',              aliases:['FOX News','Fox'],
+    domain:'foxnews.com',             font:"'Source Sans 3',sans-serif",                   nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'NBC News',              aliases:['NBC'],
+    domain:'nbcnews.com',             font:"'Source Sans 3',sans-serif",                   nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'USA Today',             aliases:['USAToday'],
+    domain:'usatoday.com',            font:"'Source Sans 3',sans-serif",                   nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Newsmax',               aliases:[],
+    domain:'newsmax.com',             font:"'Source Sans 3',sans-serif",                   nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Washington Examiner',   aliases:['The Washington Examiner'],
+    domain:'washingtonexaminer.com',  font:"'Source Sans 3',sans-serif",                   nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'The National News Desk',aliases:['National News Desk','NND'],
+    domain:'thenationalnewsdesk.com', font:"'Source Sans 3',sans-serif",                   nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Aviation Week',         aliases:['Aviation Week & Space Technology'],
+    domain:'aviationweek.com',        font:"'Source Sans 3',sans-serif",                   nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Simple Flying',         aliases:[],
+    domain:'simpleflying.com',        font:"'Source Sans 3',sans-serif",                   nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Black Enterprise',      aliases:[],
+    domain:'blackenterprise.com',     font:"'Oswald',sans-serif",                          nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'Skift',                 aliases:[],
+    domain:'skift.com',               font:"'Source Sans 3',sans-serif",                   nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+  { name:'The Mirror US',         aliases:['Mirror US','The Mirror'],
+    domain:'themirror.com',           font:"'Source Sans 3',sans-serif",                   nameColor:'#0d0d0d', cardBg:'#ffffff', logoUrl:'' },
+];
+
+var DEFAULT_TEMPLATE = [
+  { type:'header',          title:'MEDIA COVERAGE WRAP: [CAMPAIGN TITLE]' },
+  { type:'html-block',      html:'<p><a href="#" style="color:var(--accent,#2178a0);text-decoration:none">[Press release title]</a> issued by [Organization] on [topic].</p>' },
+  { type:'stats',           items:[{value:'0',label:'Total Potential Reach'},{value:'0',label:'Unique Stories'},{value:'0',label:'Total Placements'}] },
+  { type:'section-heading', text:'Top-Tier Domestic Coverage' },
+  { type:'major-grid',      importKey:'featured' },
+  { type:'section-heading', text:'Additional Domestic Coverage' },
+  { type:'minor-table',     importKey:'domestic' },
+  { type:'section-heading', text:'International Coverage' },
+  { type:'minor-table',     importKey:'international' },
+  { type:'html-block',      html:'<p style="font-size:12px;color:#777">Includes all mentions [start date] through [end date] EOD.</p>' },
+];
+
+var DEFAULT_SETTINGS = {
+  theme: { headerBg:'#1c4f63', accentColor:'#2178a0' },
+  typography: {
+    statValueSize:52, statLabelSize:11.5,
+    sectionHeadingSize:17, tableTextSize:12.5,
+    cardHlSize:12.5, cardCmSize:11.5, cardCmAlign:'left',
+  },
+  publications: DEFAULT_PUBS,
+  defaultTemplate: DEFAULT_TEMPLATE,
+};
+
+/* ----------------------------------------------------------------
+   APP STATE
+   ---------------------------------------------------------------- */
+var modules  = [];
+var settings = null;
+var _id      = 0;
+function gid() { return ++_id; }
+
+var _editCardCtx = null;  // { modId, cardIndex } -1=new
+var _editRowCtx  = null;  // { modId, rowIdx }    -1=new
+var _editHtmlCtx = null;  // moduleId
+var _editPubIdx  = null;  // index into settings.publications (-1=new)
+
+/* ----------------------------------------------------------------
+   SETTINGS: load / save / apply
+   ---------------------------------------------------------------- */
+/* Merge stored publications with DEFAULT_PUBS:
+   - Preserve all user customisations in stored pubs
+   - Backfill any empty logoUrl / aliases from the matching DEFAULT_PUB
+   - Append any DEFAULT_PUB entries not yet in stored (new pubs added to code)      */
+function mergePubs(storedPubs, defaultPubs) {
+  var defByName = {};
+  defaultPubs.forEach(function(p) { defByName[p.name.toLowerCase()] = p; });
+  var storedNames = {};
+  var result = storedPubs.map(function(sp) {
+    var key = (sp.name || '').toLowerCase();
+    storedNames[key] = true;
+    var def = defByName[key];
+    if (!def) return sp;
+    // Backfill fields that are missing/empty in the stored copy but defined in defaults
+    return Object.assign({}, sp, {
+      logoUrl:  sp.logoUrl  || def.logoUrl  || '',
+      logoData: sp.logoData || def.logoData || '',
+      aliases: (sp.aliases && sp.aliases.length) ? sp.aliases : (def.aliases || []),
+    });
+  });
+  // Add any brand-new DEFAULT_PUBS entries absent from stored settings
+  defaultPubs.forEach(function(dp) {
+    if (!storedNames[dp.name.toLowerCase()]) {
+      result.push(JSON.parse(JSON.stringify(dp)));
+    }
+  });
+  return result;
+}
+
+function loadSettings() {
+  var stored = null;
+  try { stored = JSON.parse(localStorage.getItem('pr-wrap-settings')); } catch(e) {}
+  if (stored && stored.theme && stored.typography) {
+    // merge stored settings over defaults (so new keys always have defaults)
+    settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+    settings.theme        = Object.assign({}, DEFAULT_SETTINGS.theme,       stored.theme       || {});
+    settings.typography   = Object.assign({}, DEFAULT_SETTINGS.typography,  stored.typography  || {});
+    settings.publications = mergePubs(stored.publications || [], DEFAULT_PUBS);
+    settings.defaultTemplate = stored.defaultTemplate || DEFAULT_TEMPLATE;
+  } else {
+    settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  }
+}
+
+function saveSettings() {
+  try { localStorage.setItem('pr-wrap-settings', JSON.stringify(settings)); } catch(e) {}
+}
+
+function applySettings() {
+  var r = document.documentElement.style;
+  r.setProperty('--header-bg',        settings.theme.headerBg);
+  r.setProperty('--accent',           settings.theme.accentColor);
+  r.setProperty('--stat-value-size',  settings.typography.statValueSize  + 'px');
+  r.setProperty('--stat-label-size',  settings.typography.statLabelSize  + 'px');
+  r.setProperty('--sec-heading-size', settings.typography.sectionHeadingSize + 'px');
+  r.setProperty('--table-text-size',  settings.typography.tableTextSize  + 'px');
+  r.setProperty('--card-hl-size',     settings.typography.cardHlSize     + 'px');
+  r.setProperty('--card-cm-size',     settings.typography.cardCmSize     + 'px');
+  r.setProperty('--card-cm-align',    settings.typography.cardCmAlign    || 'left');
+}
+
+function getPubPreset(pubName) {
+  if (!pubName) return null;
+  var key = pubName.trim().toLowerCase();
+  return settings.publications.find(function(p) {
+    if (p.name.toLowerCase() === key) return true;
+    return (p.aliases || []).some(function(a) { return a.toLowerCase() === key; });
+  }) || null;
+}
+
+function getLogoUrl(pubName) {
+  var p = getPubPreset(pubName);
+  if (!p) return null;
+  if (p.logoData && p.logoData.trim()) return p.logoData.trim(); // uploaded image takes priority
+  if (p.logoUrl  && p.logoUrl.trim())  return p.logoUrl.trim();
+  return p.domain ? 'https://logo.clearbit.com/' + p.domain : null;
+}
+
+/* ----------------------------------------------------------------
+   RENDER
+   ---------------------------------------------------------------- */
+function render() {
+  var doc = document.getElementById('document');
+  doc.innerHTML = '';
+  modules.forEach(function(mod, idx) { doc.appendChild(buildModWrap(mod, idx)); });
+  applyLogoFallbacks(); // async: hides any SVG logos, shows pub-name text instead
+}
+
+function buildModWrap(mod, idx) {
+  var wrap = document.createElement('div');
+  wrap.className = 'mod-wrap';
+
+  // control bar
+  var ctrl = document.createElement('div');
+  ctrl.className = 'mod-ctrl-bar';
+  var htmlBtn = mod.type === 'html-block'
+    ? '<button title="Edit HTML source" data-action="edit-html" data-id="' + mod.id + '">&lt;/&gt;</button>'
+    : '';
+  ctrl.innerHTML = htmlBtn +
+    '<button title="Move up"      data-action="mv-up"   data-idx="' + idx + '">↑</button>' +
+    '<button title="Move down"    data-action="mv-down" data-idx="' + idx + '">↓</button>' +
+    '<button class="del" title="Delete module" data-action="del" data-idx="' + idx + '">✕</button>';
+  ctrl.addEventListener('click', function(e) {
+    var btn = e.target.closest('button'); if (!btn) return; e.stopPropagation();
+    var a = btn.dataset.action;
+    if (a === 'mv-up')    mvMod(+btn.dataset.idx, -1);
+    if (a === 'mv-down')  mvMod(+btn.dataset.idx,  1);
+    if (a === 'del')      delMod(+btn.dataset.idx);
+    if (a === 'edit-html') openHtmlModal(+btn.dataset.id);
+  });
+  wrap.appendChild(ctrl);
+
+  // import key strip
+  if (mod.type === 'major-grid' || mod.type === 'minor-table') {
+    var ikr = document.createElement('div');
+    ikr.className = 'import-key-row';
+    ikr.innerHTML = '<span>Import key:</span>' +
+      '<input value="' + esc(mod.importKey || '') + '" placeholder="e.g. featured">' +
+      '<span style="color:#a8b8c4;font-size:9px">→ matches &quot;type&quot; column in spreadsheet</span>';
+    ikr.querySelector('input').addEventListener('input', function() { setField(mod.id, 'importKey', this.value); });
+    wrap.appendChild(ikr);
+  }
+
+  wrap.appendChild(buildMod(mod));
+  return wrap;
+}
+
+function buildMod(mod) {
+  var el = document.createElement('div');
+  switch (mod.type) {
+
+    case 'header':
+      el.className = 'mod-header';
+      el.innerHTML =
+        '<span class="mod-header-title" contenteditable="true">' + esc(mod.title) + '</span>' +
+        '<span class="mod-header-date"  contenteditable="true">' + esc(mod.date)  + '</span>';
+      el.querySelector('.mod-header-title').addEventListener('blur', function() { setField(mod.id,'title',this.innerText.trim()); });
+      el.querySelector('.mod-header-date').addEventListener('blur',  function() { setField(mod.id,'date', this.innerText.trim()); });
+      break;
+
+    case 'stats': {
+      el.className = 'mod-stats';
+      mod.items.forEach(function(s, si) {
+        var sw = document.createElement('div');
+        sw.className = 'stat-wrap';
+        sw.innerHTML =
+          '<span class="stat-value" contenteditable="true">' + esc(s.value) + '</span>' +
+          '<span class="stat-label" contenteditable="true">' + esc(s.label) + '</span>' +
+          '<button class="stat-rm" title="Remove stat">✕</button>';
+        sw.querySelector('.stat-value').addEventListener('blur', function() { setStatField(mod.id, si, 'value', this.innerText.trim()); });
+        sw.querySelector('.stat-label').addEventListener('blur', function() { setStatField(mod.id, si, 'label', this.innerText.trim()); });
+        sw.querySelector('.stat-rm').addEventListener('click', function() { rmStat(mod.id, si); });
+        el.appendChild(sw);
+      });
+      var sab = document.createElement('button');
+      sab.className = 'stat-add-btn'; sab.title = 'Add stat'; sab.textContent = '+';
+      sab.addEventListener('click', function() { addStat(mod.id); });
+      el.appendChild(sab);
+      break;
+    }
+
+    case 'section-heading':
+      el.className = 'mod-sec-heading';
+      el.innerHTML = '<span contenteditable="true">' + esc(mod.text) + '</span>';
+      el.querySelector('span').addEventListener('blur', function() { setField(mod.id,'text',this.innerText.trim()); });
+      break;
+
+    case 'major-grid': {
+      el.className = 'mod-major-grid';
+      var grid = document.createElement('div');
+      grid.className = 'major-grid';
+      mod.cards.forEach(function(card, ci) { grid.appendChild(buildCard(mod.id, card, ci)); });
+      var acb = document.createElement('button');
+      acb.className = 'major-card-add'; acb.textContent = '＋ Add Coverage Card';
+      acb.addEventListener('click', function() { openNewCard(mod.id); });
+      grid.appendChild(acb);
+      el.appendChild(grid);
+      break;
+    }
+
+    case 'minor-table': {
+      el.className = 'mod-minor-table';
+      var tbl = document.createElement('table');
+      tbl.className = 'minor-tbl';
+      mod.rows.forEach(function(row, ri) {
+        var tr = document.createElement('tr');
+        var hlHtml = row.url
+          ? '<a href="' + escA(row.url) + '" target="_blank">' + esc(row.headline) + '</a>'
+          : esc(row.headline);
+        tr.innerHTML =
+          '<td class="minor-td-pub">' + esc(row.publication) + '</td>' +
+          '<td class="minor-td-hl"><div class="hl-inner">' +
+            '<div class="hl-text">' + hlHtml + '</div>' +
+            '<div class="row-btns">' +
+              '<button class="row-btn"    title="Edit row" data-action="edit">✏</button>' +
+              '<button class="row-btn rm" title="Remove row" data-action="rm">✕</button>' +
+            '</div></div></td>';
+        tr.querySelector('[data-action="edit"]').addEventListener('click', function() { openEditRow(mod.id, ri); });
+        tr.querySelector('[data-action="rm"]').addEventListener('click',   function() { rmRow(mod.id, ri); });
+        tbl.appendChild(tr);
+      });
+      el.appendChild(tbl);
+      if (mod.additionalPubs && mod.additionalPubs.length) {
+        var ap = document.createElement('div');
+        ap.className = 'minor-additional';
+        ap.innerHTML = '+ Additional coverage in ' + mod.additionalPubs.map(function(p) {
+          return p.url
+            ? '<a href="' + escA(p.url) + '" target="_blank">' + esc(p.name) + '</a>'
+            : esc(p.name);
+        }).join(', ');
+        el.appendChild(ap);
+      }
+      var arb = document.createElement('button');
+      arb.className = 'add-row-btn'; arb.textContent = '＋ Add Row';
+      arb.addEventListener('click', function() { openNewRow(mod.id); });
+      el.appendChild(arb);
+      break;
+    }
+
+    case 'html-block': {
+      el.className = 'mod-html-block';
+      var inner = document.createElement('div');
+      inner.className = 'html-block-rendered';
+      inner.contentEditable = 'true';
+      inner.innerHTML = mod.html || '<p>Text here…</p>';
+      inner.addEventListener('blur', function() { setField(mod.id,'html',this.innerHTML); });
+      el.appendChild(inner);
+      break;
+    }
+  }
+  return el;
+}
+
+function buildCard(modId, card, ci) {
+  var el = document.createElement('div');
+  el.className = 'major-card';
+  var preset    = getPubPreset(card.publication);
+  var logoUrl   = getLogoUrl(card.publication);
+  var hlFont    = preset ? preset.font : null;
+  var nameColor = preset ? preset.nameColor : '#222';
+  var cardBg    = preset ? (preset.cardBg || '#ffffff') : '#ffffff';
+  if (cardBg && cardBg !== '#ffffff') el.style.backgroundColor = cardBg;
+
+  // If we already know this URL is SVG (from a prior detectLogoType call), skip the img entirely
+  var logoKnownSvg = logoUrl && (_logoTypeCache[logoUrl] === true);
+  var useLogoImg   = logoUrl && !logoKnownSvg;
+
+  var textStyle = 'color:' + escA(nameColor) + (hlFont ? ';font-family:' + escA(hlFont) : '');
+  var logoHtml;
+  if (useLogoImg) {
+    logoHtml =
+      '<img class="major-card-logo" src="' + escA(logoUrl) + '" alt="' + escA(card.publication) + '"' +
+        ' onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
+      '<span class="major-card-logo-text" style="display:none;' + textStyle + '">' +
+        esc(card.publication) + '</span>';
+  } else {
+    logoHtml =
+      '<span class="major-card-logo-text" style="' + textStyle + '">' +
+        esc(card.publication) + '</span>';
+  }
+
+  var hlHtml = (card.headlines || []).map(function(h) {
+    // Apply nameColor + font to each headline (inline style overrides the CSS default #111)
+    var hlStyle = 'color:' + escA(nameColor) + (hlFont ? ';font-family:' + escA(hlFont) : '');
+    return h.url
+      ? '<a class="major-card-headline" style="' + hlStyle + '" href="' + escA(h.url) + '" target="_blank">' + esc(h.text) + '</a>'
+      : '<span class="major-card-headline" style="' + hlStyle + '">' + esc(h.text) + '</span>';
+  }).join('');
+
+  el.innerHTML =
+    '<div class="major-card-logo-area">' + logoHtml + '</div>' +
+    '<div class="major-card-headlines">' + hlHtml + '</div>' +
+    '<div class="major-card-commentary" style="color:' + escA(nameColor) + '">' + esc(card.commentary || '') + '</div>' +
+    '<button class="card-rm-btn" title="Remove card">✕</button>' +
+    '<div class="card-btns"><button class="card-edit-btn" title="Edit card">✏</button></div>';
+
+  el.querySelector('.card-rm-btn').addEventListener('click',   function() { rmCard(modId, ci); });
+  el.querySelector('.card-edit-btn').addEventListener('click', function() { openEditCard(modId, ci); });
+  // Hover tint on headlines — inline style beats CSS :hover so we wire it in JS
+  var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2178a0';
+  el.querySelectorAll('.major-card-headline').forEach(function(hl) {
+    var base = hl.style.color;
+    hl.addEventListener('mouseenter', function() { hl.style.color = accent; });
+    hl.addEventListener('mouseleave', function() { hl.style.color = base; });
+  });
+  return el;
+}
+
+/* ----------------------------------------------------------------
+   STATE MUTATIONS
+   ---------------------------------------------------------------- */
+function setField(id, field, val) {
+  var m = modules.find(function(m) { return m.id === id; });
+  if (m) m[field] = val;
+}
+function setStatField(id, idx, field, val) {
+  var m = modules.find(function(m) { return m.id === id; });
+  if (m && m.items[idx]) m.items[idx][field] = val;
+}
+function addStat(id) {
+  var m = modules.find(function(m) { return m.id === id; });
+  if (m) { m.items.push({value:'0',label:'New Stat'}); render(); }
+}
+function rmStat(id, idx) {
+  var m = modules.find(function(m) { return m.id === id; });
+  if (m) { m.items.splice(idx,1); render(); }
+}
+function rmCard(id, idx) {
+  var m = modules.find(function(m) { return m.id === id; });
+  if (m) { m.cards.splice(idx,1); render(); }
+}
+function rmRow(id, idx) {
+  var m = modules.find(function(m) { return m.id === id; });
+  if (m) { m.rows.splice(idx,1); render(); }
+}
+function mvMod(idx, dir) {
+  var ni = idx + dir;
+  if (ni < 0 || ni >= modules.length) return;
+  var tmp = modules[idx]; modules[idx] = modules[ni]; modules[ni] = tmp;
+  render();
+}
+function delMod(idx) { modules.splice(idx,1); render(); }
+
+/* ----------------------------------------------------------------
+   ADD MODULE
+   ---------------------------------------------------------------- */
+document.getElementById('add-mod-select').addEventListener('change', function() {
+  var t = this.value; this.value = '';
+  if (!t) return;
+  var id = gid();
+  var defs = {
+    'header':          {id:id,type:'header',title:'MEDIA COVERAGE WRAP: [TITLE]',date:fmtDate(new Date())},
+    'stats':           {id:id,type:'stats',items:[{value:'0',label:'Total Potential Reach'},{value:'0',label:'Unique Stories'},{value:'0',label:'Total Placements'}]},
+    'section-heading': {id:id,type:'section-heading',text:'Section Heading'},
+    'major-grid':      {id:id,type:'major-grid',importKey:'featured',cards:[]},
+    'minor-table':     {id:id,type:'minor-table',importKey:'domestic',rows:[],additionalPubs:[]},
+    'html-block':      {id:id,type:'html-block',html:'<p>Text here…</p>'},
+  };
+  modules.push(defs[t]);
+  render();
+  setTimeout(function() { window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}); }, 50);
+});
+
+/* ----------------------------------------------------------------
+   HEADLINE AUTO-FETCH (direct fetch — succeeds where CORS allows)
+   ---------------------------------------------------------------- */
+/* ----------------------------------------------------------------
+   CARD MODAL
+   ---------------------------------------------------------------- */
+var _hlCount = 0;
+
+document.getElementById('cp-pub').addEventListener('input', cardLogoPreview);
+document.getElementById('cp-add-hl').addEventListener('click', function() { addHlField(); });
+document.getElementById('card-save-btn').addEventListener('click', saveCard);
+document.getElementById('card-cancel-btn').addEventListener('click', closeCardModal);
+document.getElementById('card-modal-x').addEventListener('click', closeCardModal);
+
+function openNewCard(modId) {
+  _editCardCtx = {modId:modId, cardIndex:-1};
+  document.getElementById('card-modal-title').textContent = 'Add Coverage Card';
+  document.getElementById('cp-pub').value = '';
+  document.getElementById('cp-commentary').value = '';
+  document.getElementById('cp-logo-img').style.display = 'none';
+  document.getElementById('cp-logo-text').style.display = 'none';
+  document.getElementById('cp-logo-none').style.display = '';
+  document.getElementById('cp-headlines-wrap').innerHTML = '';
+  _hlCount = 0; addHlField();
+  document.getElementById('card-overlay').classList.add('open');
+}
+
+function openEditCard(modId, ci) {
+  var m = modules.find(function(m) { return m.id === modId; }); if (!m) return;
+  var c = m.cards[ci];
+  _editCardCtx = {modId:modId, cardIndex:ci};
+  document.getElementById('card-modal-title').textContent = 'Edit Coverage Card';
+  document.getElementById('cp-pub').value = c.publication || '';
+  document.getElementById('cp-commentary').value = c.commentary || '';
+  document.getElementById('cp-headlines-wrap').innerHTML = '';
+  _hlCount = 0;
+  (c.headlines||[]).forEach(function(h) { addHlField(h.text, h.url); });
+  if (!c.headlines || !c.headlines.length) addHlField();
+  cardLogoPreview();
+  document.getElementById('card-overlay').classList.add('open');
+}
+
+function addHlField(text, url) {
+  text = text || ''; url = url || ''; _hlCount++;
+  var wrap = document.getElementById('cp-headlines-wrap');
+  var div  = document.createElement('div'); div.className = 'fg';
+  div.innerHTML =
+    '<label>Headline' + (_hlCount > 1 ? ' ' + _hlCount : '') + '</label>' +
+    '<input type="text" class="hl-text" value="' + escA(text) + '" placeholder="Headline text…">' +
+    '<input type="text" class="hl-url" value="' + escA(url) + '" placeholder="https://… (article link)" style="margin-top:4px">';
+  wrap.appendChild(div);
+}
+
+function cardLogoPreview() {
+  var pub     = document.getElementById('cp-pub').value;
+  var img     = document.getElementById('cp-logo-img');
+  var txt     = document.getElementById('cp-logo-text');
+  var none    = document.getElementById('cp-logo-none');
+  var logoUrl = getLogoUrl(pub);
+  var preset  = getPubPreset(pub);
+  var color   = preset ? preset.nameColor : '#222';
+  var font    = preset ? preset.font : null;
+
+  function showText() {
+    img.style.display = 'none';
+    if (pub) {
+      txt.textContent = pub; txt.style.color = color;
+      txt.style.fontFamily = font || '';
+      txt.style.display = 'block'; none.style.display = 'none';
+    } else {
+      txt.style.display = 'none'; none.style.display = '';
+    }
+  }
+
+  if (logoUrl) {
+    // Check whether the URL returns an SVG — if so, fall back to name text
+    detectLogoType(logoUrl, function(isSvg) {
+      if (isSvg) {
+        showText();
+      } else {
+        img.src = logoUrl; img.style.display = 'block';
+        txt.style.display = 'none'; none.style.display = 'none';
+      }
+    });
+  } else {
+    showText();
+  }
+}
+
+function saveCard() {
+  var pub   = document.getElementById('cp-pub').value.trim();
+  var comm  = document.getElementById('cp-commentary').value.trim();
+  var texts = Array.from(document.querySelectorAll('#cp-headlines-wrap .hl-text'));
+  var urls  = Array.from(document.querySelectorAll('#cp-headlines-wrap .hl-url'));
+  var headlines = texts.reduce(function(acc, t, i) {
+    if (t.value.trim()) acc.push({text: t.value.trim(), url: urls[i] ? urls[i].value.trim() : ''});
+    return acc;
+  }, []);
+  var card = {publication:pub, headlines:headlines, commentary:comm};
+  var m = modules.find(function(m) { return m.id === _editCardCtx.modId; }); if (!m) return;
+  if (_editCardCtx.cardIndex === -1) m.cards.push(card); else m.cards[_editCardCtx.cardIndex] = card;
+  closeCardModal(); render();
+}
+
+function closeCardModal() {
+  document.getElementById('card-overlay').classList.remove('open'); _editCardCtx = null;
+}
+
+/* ----------------------------------------------------------------
+   ROW MODAL
+   ---------------------------------------------------------------- */
+document.getElementById('row-save-btn').addEventListener('click', saveRow);
+document.getElementById('row-cancel-btn').addEventListener('click', closeRowModal);
+document.getElementById('row-modal-x').addEventListener('click', closeRowModal);
+
+function openNewRow(modId) {
+  _editRowCtx = {modId:modId, rowIdx:-1};
+  document.getElementById('row-modal-title').textContent = 'Add Row';
+  document.getElementById('rp-pub').value = ''; document.getElementById('rp-hl').value = '';
+  document.getElementById('rp-url').value = ''; document.getElementById('rp-type').value = 'regular';
+  document.getElementById('rp-type-group').style.display = '';
+  document.getElementById('rp-hl-group').style.display = '';
+  document.getElementById('row-overlay').classList.add('open');
+}
+
+function openEditRow(modId, rowIdx) {
+  var m = modules.find(function(m) { return m.id === modId; }); if (!m) return;
+  var row = m.rows[rowIdx];
+  _editRowCtx = {modId:modId, rowIdx:rowIdx};
+  document.getElementById('row-modal-title').textContent = 'Edit Row';
+  document.getElementById('rp-pub').value = row.publication || '';
+  document.getElementById('rp-hl').value  = row.headline    || '';
+  document.getElementById('rp-url').value = row.url         || '';
+  document.getElementById('rp-type-group').style.display = 'none';
+  document.getElementById('rp-hl-group').style.display   = '';
+  document.getElementById('row-overlay').classList.add('open');
+}
+
+function saveRow() {
+  var pub  = document.getElementById('rp-pub').value.trim();
+  var hl   = document.getElementById('rp-hl').value.trim();
+  var url  = document.getElementById('rp-url').value.trim();
+  var type = document.getElementById('rp-type').value;
+  if (!pub && !hl) return;
+  var m = modules.find(function(m) { return m.id === _editRowCtx.modId; }); if (!m) return;
+  if (_editRowCtx.rowIdx >= 0) {
+    m.rows[_editRowCtx.rowIdx] = {publication:pub, headline:hl, url:url};
+  } else if (type === 'additional') {
+    if (!m.additionalPubs) m.additionalPubs = [];
+    m.additionalPubs.push({name:pub, url:url});
+  } else {
+    m.rows.push({publication:pub, headline:hl, url:url});
+  }
+  closeRowModal(); render();
+}
+
+function closeRowModal() {
+  document.getElementById('row-overlay').classList.remove('open'); _editRowCtx = null;
+}
+
+/* ----------------------------------------------------------------
+   HTML EDITOR MODAL
+   ---------------------------------------------------------------- */
+document.getElementById('html-save-btn').addEventListener('click', saveHtmlModal);
+document.getElementById('html-cancel-btn').addEventListener('click', closeHtmlModal);
+document.getElementById('html-modal-x').addEventListener('click', closeHtmlModal);
+
+function openHtmlModal(modId) {
+  var m = modules.find(function(m) { return m.id === modId; }); if (!m) return;
+  _editHtmlCtx = modId;
+  document.getElementById('html-editor').value = m.html || '';
+  document.getElementById('html-overlay').classList.add('open');
+  setTimeout(function() { document.getElementById('html-editor').focus(); }, 60);
+}
+function saveHtmlModal() {
+  var m = modules.find(function(m) { return m.id === _editHtmlCtx; }); if (!m) return;
+  m.html = document.getElementById('html-editor').value;
+  closeHtmlModal(); render();
+}
+function closeHtmlModal() {
+  document.getElementById('html-overlay').classList.remove('open'); _editHtmlCtx = null;
+}
+
+/* ----------------------------------------------------------------
+   SETTINGS MODAL
+   ---------------------------------------------------------------- */
+document.getElementById('settings-x').addEventListener('click', closeSettings);
+document.getElementById('export-settings-btn').addEventListener('click', exportSettings);
+document.getElementById('import-settings-btn').addEventListener('click', function() {
+  document.getElementById('settings-import-input').click();
+});
+document.getElementById('save-tmpl-btn').addEventListener('click', saveAsDefaultTemplate);
+document.getElementById('reset-tmpl-btn').addEventListener('click', resetDefaultTemplate);
+document.getElementById('add-pub-btn').addEventListener('click', function() { openEditPub(-1); });
+document.getElementById('settings-import-input').addEventListener('change', importSettingsFile);
+
+// Tab switching
+document.querySelectorAll('.stab').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.stab').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.stab-panel').forEach(function(p) { p.classList.remove('active'); });
+    this.classList.add('active');
+    var panel = document.getElementById('stab-' + this.dataset.stab);
+    if (panel) panel.classList.add('active');
+    if (this.dataset.stab === 'pubs') renderPubTable();
+    if (this.dataset.stab === 'tmpl') renderTemplatePreview();
+  });
+});
+
+function openSettings() {
+  // populate theme & typography fields from current settings
+  document.getElementById('s-header-bg').value = settings.theme.headerBg;
+  document.getElementById('s-accent').value     = settings.theme.accentColor;
+  document.getElementById('s-stat-val').value   = settings.typography.statValueSize;
+  document.getElementById('s-stat-lbl').value   = settings.typography.statLabelSize;
+  document.getElementById('s-sec-head').value   = settings.typography.sectionHeadingSize;
+  document.getElementById('s-tbl-txt').value    = settings.typography.tableTextSize;
+  document.getElementById('s-card-hl').value        = settings.typography.cardHlSize;
+  document.getElementById('s-card-cm').value        = settings.typography.cardCmSize;
+  document.getElementById('s-card-cm-align').value  = settings.typography.cardCmAlign || 'left';
+  // live-update as user changes values
+  ['s-header-bg','s-accent'].forEach(function(id) {
+    document.getElementById(id).oninput = applyAndSaveTheme;
+  });
+  ['s-stat-val','s-stat-lbl','s-sec-head','s-tbl-txt','s-card-hl','s-card-cm'].forEach(function(id) {
+    document.getElementById(id).oninput = applyAndSaveTypo;
+  });
+  document.getElementById('s-card-cm-align').onchange = applyAndSaveTypo;
+  // show sidebar (toggle if already open)
+  if (document.body.classList.contains('sidebar-open')) {
+    closeSettings();
+  } else {
+    document.body.classList.add('sidebar-open');
+    // reset to theme tab when freshly opened
+    document.querySelectorAll('.stab').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.stab-panel').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelector('.stab[data-stab="theme"]').classList.add('active');
+    document.getElementById('stab-theme').classList.add('active');
+  }
+}
+
+function closeSettings() {
+  document.body.classList.remove('sidebar-open');
+}
+
+function applyAndSaveTheme() {
+  settings.theme.headerBg     = document.getElementById('s-header-bg').value;
+  settings.theme.accentColor  = document.getElementById('s-accent').value;
+  applySettings(); saveSettings();
+}
+
+function applyAndSaveTypo() {
+  settings.typography.statValueSize       = +document.getElementById('s-stat-val').value || 52;
+  settings.typography.statLabelSize       = +document.getElementById('s-stat-lbl').value || 11.5;
+  settings.typography.sectionHeadingSize  = +document.getElementById('s-sec-head').value || 17;
+  settings.typography.tableTextSize       = +document.getElementById('s-tbl-txt').value  || 12.5;
+  settings.typography.cardHlSize          = +document.getElementById('s-card-hl').value  || 12.5;
+  settings.typography.cardCmSize          = +document.getElementById('s-card-cm').value  || 11.5;
+  settings.typography.cardCmAlign        = document.getElementById('s-card-cm-align').value || 'left';
+  applySettings(); saveSettings();
+}
+
+/* Publications table */
+function renderPubTable() {
+  var wrap = document.getElementById('pub-table-wrap'); if (!wrap) return;
+  var html = '<table class="pub-tbl"><thead><tr>' +
+    '<th>Name</th><th>Domain</th><th>Headline Font</th><th>HL Color</th><th>Card BG</th><th></th>' +
+    '</tr></thead><tbody>';
+  settings.publications.forEach(function(p, i) {
+    html += '<tr>' +
+      '<td>' + esc(p.name) +
+        (p.aliases && p.aliases.length ? '<br><span style="font-size:10px;color:#aaa">' + esc(p.aliases.join(', ')) + '</span>' : '') +
+      '</td>' +
+      '<td style="color:#778">' + esc(p.domain) + '</td>' +
+      '<td><span class="font-preview" style="font-family:' + escA(p.font) + '">' + esc(p.name) + '</span></td>' +
+      '<td><span class="pub-swatch" style="background:' + escA(p.nameColor) + '"></span></td>' +
+      '<td><span class="pub-swatch" style="background:' + escA(p.cardBg||'#ffffff') + ';border:1px solid #ccc"></span></td>' +
+      '<td><div class="pub-row-btns">' +
+        '<button class="pub-row-btn" title="Edit" data-action="edit" data-i="' + i + '">✏</button>' +
+        '<button class="pub-row-btn rm" title="Remove" data-action="rm" data-i="' + i + '">✕</button>' +
+      '</div></td></tr>';
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('[data-action="edit"]').forEach(function(b) {
+    b.addEventListener('click', function() { openEditPub(+this.dataset.i); });
+  });
+  wrap.querySelectorAll('[data-action="rm"]').forEach(function(b) {
+    b.addEventListener('click', function() {
+      settings.publications.splice(+this.dataset.i, 1);
+      saveSettings(); renderPubTable(); render();
+    });
+  });
+}
+
+/* ----------------------------------------------------------------
+   LOGO UPLOAD — drag-and-drop or file-browse, stores as base64 data URI.
+   SVGs are auto-converted to PNG so they render correctly in PDF export.
+   ---------------------------------------------------------------- */
+var _peLogoData = ''; // base64 data URI for the pub currently being edited
+
+function updateUploadBadge() {
+  var badge = document.getElementById('pe-logo-badge');
+  if (!badge) return;
+  if (_peLogoData) {
+    badge.innerHTML =
+      '<span style="font-size:11px;color:#217a3c">🖼️ Custom image uploaded</span> ' +
+      '<button type="button" id="pe-clear-upload" style="background:none;border:none;color:#c44;font-size:11px;cursor:pointer;padding:0 4px">✕ Clear</button>';
+    document.getElementById('pe-clear-upload').addEventListener('click', function() {
+      _peLogoData = ''; updateUploadBadge();
+    });
+  } else {
+    badge.innerHTML = '';
+  }
+}
+
+function openLogoUploadModal() {
+  var old = document.getElementById('logo-upload-overlay'); if (old) old.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'logo-upload-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center';
+
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:8px;padding:24px;width:400px;max-width:92vw;box-shadow:0 8px 32px rgba(0,0,0,.22)">' +
+      '<div style="font-size:14px;font-weight:700;color:#1c3040;margin-bottom:14px">Upload Logo Image</div>' +
+      '<div id="logo-current-wrap"></div>' +
+      '<div id="logo-drop-zone" style="border:2px dashed #b0c8d8;border-radius:6px;padding:28px 16px;text-align:center;cursor:pointer;background:#f8fbfd;transition:border-color .15s,background .15s">' +
+        '<div style="font-size:30px;margin-bottom:6px">🖼️</div>' +
+        '<div style="font-size:13px;color:#445;margin-bottom:4px">Drag &amp; drop an image here</div>' +
+        '<div style="font-size:12px;color:#bbb">or</div>' +
+        '<button type="button" class="btn btn-secondary" id="logo-browse-btn" style="margin-top:8px;font-size:12px">Browse files…</button>' +
+        '<div style="font-size:11px;color:#bbb;margin-top:8px">PNG · JPG · GIF · WebP · SVG (auto-converted to PNG)</div>' +
+      '</div>' +
+      '<input type="file" id="logo-file-input" accept="image/*" style="display:none">' +
+      '<div id="logo-upload-status" style="font-size:12px;color:#556;margin-top:8px;min-height:16px;text-align:center"></div>' +
+      '<div style="display:flex;justify-content:flex-end;margin-top:14px">' +
+        '<button class="btn btn-secondary" id="logo-upload-done">Done</button>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+
+  // Populate current-image preview if we already have one
+  function refreshCurrentWrap() {
+    var wrap = document.getElementById('logo-current-wrap');
+    if (!wrap) return;
+    if (_peLogoData) {
+      wrap.innerHTML =
+        '<div style="text-align:center;margin-bottom:12px;padding:10px;background:#f4f8fb;border-radius:6px;border:1px solid #dce8f0">' +
+          '<div style="font-size:11px;color:#889;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Current logo</div>' +
+          '<img src="' + escA(_peLogoData) + '" style="max-height:56px;max-width:180px;object-fit:contain">' +
+          '<div style="margin-top:8px">' +
+            '<button type="button" class="btn btn-secondary" id="logo-modal-clear-btn" style="font-size:11px;padding:3px 10px">✕ Clear uploaded image</button>' +
+          '</div>' +
+        '</div>';
+      document.getElementById('logo-modal-clear-btn').addEventListener('click', function() {
+        _peLogoData = ''; refreshCurrentWrap(); updateUploadBadge();
+        document.getElementById('logo-upload-status').textContent = 'Image cleared.';
+      });
+    } else {
+      wrap.innerHTML = '';
+    }
+  }
+  refreshCurrentWrap();
+
+  var dropZone  = document.getElementById('logo-drop-zone');
+  var fileInput = document.getElementById('logo-file-input');
+  var status    = document.getElementById('logo-upload-status');
+
+  function storeAndUpdate(dataUri) {
+    _peLogoData = dataUri;
+    refreshCurrentWrap();
+    updateUploadBadge();
+  }
+
+  function processFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      status.textContent = 'Please select an image file (PNG, JPG, WebP, SVG…)';
+      return;
+    }
+    status.textContent = 'Reading…';
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var dataUri = ev.target.result;
+      // If SVG, try converting to PNG via canvas for reliable PDF export
+      if (file.type === 'image/svg+xml' || dataUri.startsWith('data:image/svg')) {
+        var tmpImg = new Image();
+        tmpImg.onload = function() {
+          try {
+            var c = document.createElement('canvas');
+            var sw = tmpImg.naturalWidth  || 400;
+            var sh = tmpImg.naturalHeight || 300;
+            c.width = sw * 2; c.height = sh * 2;
+            c.getContext('2d').drawImage(tmpImg, 0, 0, c.width, c.height);
+            storeAndUpdate(c.toDataURL('image/png'));
+            status.textContent = 'SVG converted to PNG and uploaded ✓';
+          } catch(e) {
+            storeAndUpdate(dataUri); // store SVG as-is if canvas conversion fails
+            status.textContent = 'SVG uploaded (conversion failed — may not export correctly)';
+          }
+        };
+        tmpImg.onerror = function() {
+          storeAndUpdate(dataUri);
+          status.textContent = 'SVG uploaded (may not export correctly)';
+        };
+        tmpImg.src = dataUri;
+      } else {
+        storeAndUpdate(dataUri);
+        status.textContent = 'Image uploaded ✓';
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Drag & drop
+  dropZone.addEventListener('dragover',  function(e) { e.preventDefault(); dropZone.style.borderColor='#2178a0'; dropZone.style.background='#e8f3fa'; });
+  dropZone.addEventListener('dragleave', function()  { dropZone.style.borderColor='#b0c8d8'; dropZone.style.background='#f8fbfd'; });
+  dropZone.addEventListener('drop', function(e) {
+    e.preventDefault(); dropZone.style.borderColor='#b0c8d8'; dropZone.style.background='#f8fbfd';
+    processFile(e.dataTransfer.files[0]);
+  });
+
+  // Browse
+  document.getElementById('logo-browse-btn').addEventListener('click', function(e) { e.stopPropagation(); fileInput.click(); });
+  dropZone.addEventListener('click', function() { fileInput.click(); });
+  fileInput.addEventListener('change', function() { if (this.files[0]) processFile(this.files[0]); });
+
+  // Close
+  document.getElementById('logo-upload-done').addEventListener('click', function() { overlay.remove(); });
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+}
+
+function openEditPub(idx) {
+  var isNew = idx === -1;
+  var p = isNew ? {name:'',aliases:[],domain:'',font:"'Source Sans 3',sans-serif",nameColor:'#000000',cardBg:'#ffffff',logoUrl:'',logoData:''} : settings.publications[idx];
+  var title = isNew ? 'Add Publication' : 'Edit Publication';
+  // Build a simple inline edit form below the table
+  var existing = document.getElementById('pub-edit-form');
+  if (existing) existing.remove();
+  var form = document.createElement('div');
+  form.id = 'pub-edit-form';
+  form.style.cssText = 'background:#f4f8fb;border:1px solid #dce8f0;border-radius:6px;padding:14px 16px;margin-top:10px';
+  form.innerHTML = '<strong style="font-size:13px;color:#1c3040">' + title + '</strong>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-top:10px">' +
+    '<div class="fg"><label>Display Name</label><input id="pe-name" value="' + escA(p.name) + '" placeholder="e.g. Politico"></div>' +
+    '<div class="fg"><label>Domain (for logo)</label><input id="pe-domain" value="' + escA(p.domain) + '" placeholder="e.g. politico.com"></div>' +
+    '<div class="fg" style="grid-column:1/-1"><label>Also recognized as <span style="font-weight:400;color:#aaa">(comma-separated)</span></label><input id="pe-aliases" value="' + escA((p.aliases||[]).join(', ')) + '" placeholder="e.g. The New York Times, NYT, NYTimes"></div>' +
+    '<div class="fg" style="grid-column:1/-1">' +
+    '<label>Logo Image URL <span style="font-weight:400;color:#aaa">(overrides domain auto-fetch)</span></label>' +
+    '<div style="display:flex;gap:6px">' +
+    '<input id="pe-logo-url" value="' + escA(p.logoUrl||'') + '" placeholder="https://\u2026/logo.png" style="flex:1">' +
+    '<button type="button" id="pe-logo-upload-btn" class="btn btn-secondary" style="flex-shrink:0" title="Upload an image file">📁 Upload</button>' +
+    '</div>' +
+    '<div id="pe-logo-badge" style="margin-top:4px;min-height:18px"></div>' +
+    '</div>' +
+    '<div class="fg" style="grid-column:1/-1"><label>Headline Font (CSS font-family)</label><input id="pe-font" value="' + escA(p.font) + '" placeholder="\'Oswald\',sans-serif"></div>' +
+    '<div class="fg"><label>Headline Color</label><input type="color" id="pe-color" value="' + escA(p.nameColor) + '"></div>' +
+    '<div class="fg"><label>Card Background</label><input type="color" id="pe-bg" value="' + escA(p.cardBg||'#ffffff') + '"></div>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-top:8px">' +
+    '<button class="btn btn-primary" id="pe-save">Save</button>' +
+    '<button class="btn btn-secondary" id="pe-cancel">Cancel</button>' +
+    '</div>';
+  document.getElementById('pub-table-wrap').after(form);
+  _peLogoData = p.logoData || '';
+  updateUploadBadge();
+  document.getElementById('pe-logo-upload-btn').addEventListener('click', openLogoUploadModal);
+  document.getElementById('pe-cancel').addEventListener('click', function() { form.remove(); });
+  document.getElementById('pe-save').addEventListener('click', function() {
+    var entry = {
+      name:      document.getElementById('pe-name').value.trim(),
+      aliases:   document.getElementById('pe-aliases').value.split(',').map(function(s){return s.trim();}).filter(Boolean),
+      domain:    document.getElementById('pe-domain').value.trim(),
+      font:      document.getElementById('pe-font').value.trim(),
+      nameColor: document.getElementById('pe-color').value,
+      cardBg:    document.getElementById('pe-bg').value,
+      logoUrl:   document.getElementById('pe-logo-url').value.trim(),
+      logoData:  _peLogoData,
+    };
+    if (!entry.name) return;
+    if (isNew) settings.publications.push(entry);
+    else settings.publications[idx] = entry;
+    saveSettings(); renderPubTable(); render(); form.remove();
+  });
+}
+
+/* Default template */
+function renderTemplatePreview() {
+  var wrap = document.getElementById('tmpl-preview-wrap'); if (!wrap) return;
+  var items = settings.defaultTemplate.map(function(m) {
+    var labels = {
+      'header':'Header Bar','stats':'Stats Row','section-heading':'Section Heading',
+      'major-grid':'Hero Grid','minor-table':'Table','html-block':'Text'
+    };
+    var label = labels[m.type] || m.type;
+    var detail = m.text || m.title || m.importKey || '';
+    return '<span title="' + escA(detail) + '">' + label + (detail ? ': <em>' + esc(detail.substring(0,28)) + '</em>' : '') + '</span>';
+  }).join(' → ');
+  wrap.innerHTML = '<p style="font-size:11px;color:#889;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Current template modules:</p>' +
+    '<div class="template-preview-list">' + items + '</div>';
+}
+
+function saveAsDefaultTemplate() {
+  settings.defaultTemplate = modules.map(function(m) {
+    var tpl = JSON.parse(JSON.stringify(m));
+    delete tpl.id;
+    if (tpl.type === 'major-grid')  tpl.cards = [];
+    if (tpl.type === 'minor-table') { tpl.rows = []; tpl.additionalPubs = []; }
+    return tpl;
+  });
+  saveSettings(); renderTemplatePreview();
+  alert('✓ Current document saved as default template.');
+}
+
+function resetDefaultTemplate() {
+  settings.defaultTemplate = JSON.parse(JSON.stringify(DEFAULT_TEMPLATE));
+  saveSettings(); renderTemplatePreview();
+  alert('✓ Default template reset to factory defaults.');
+}
+
+function exportSettings() {
+  var blob = new Blob([JSON.stringify(settings, null, 2)], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'pr-wrap-settings.json'; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importSettingsFile(e) {
+  var file = e.target.files[0]; e.target.value = ''; if (!file) return;
+  var r = new FileReader();
+  r.onload = function(ev) {
+    try {
+      var d = JSON.parse(ev.target.result);
+      if (!d.theme || !d.typography) throw new Error('Invalid settings file.');
+      settings = d; applySettings(); saveSettings();
+      // repopulate sidebar inputs without toggling open state
+      document.getElementById('s-header-bg').value = settings.theme.headerBg;
+      document.getElementById('s-accent').value     = settings.theme.accentColor;
+      document.getElementById('s-stat-val').value   = settings.typography.statValueSize;
+      document.getElementById('s-stat-lbl').value   = settings.typography.statLabelSize;
+      document.getElementById('s-sec-head').value   = settings.typography.sectionHeadingSize;
+      document.getElementById('s-tbl-txt').value    = settings.typography.tableTextSize;
+      document.getElementById('s-card-hl').value       = settings.typography.cardHlSize;
+      document.getElementById('s-card-cm').value       = settings.typography.cardCmSize;
+      document.getElementById('s-card-cm-align').value = settings.typography.cardCmAlign || 'left';
+      renderPubTable(); render(); alert('✓ Settings imported.');
+    } catch(err) { alert('Import error: ' + err.message); }
+  };
+  r.readAsText(file);
+}
+
+/* ----------------------------------------------------------------
+   EXCEL IMPORT
+   ---------------------------------------------------------------- */
+document.getElementById('xl-input').addEventListener('change', handleXlImport);
+
+function handleXlImport(e) {
+  var file = e.target.files[0]; e.target.value = ''; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      var wb   = XLSX.read(ev.target.result, {type:'binary'});
+      var ws   = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      if (!rows.length) { alert('No data found.'); return; }
+      var norm = rows.map(function(r) {
+        var out = {};
+        Object.keys(r).forEach(function(k) { out[k.toLowerCase().trim()] = r[k]; });
+        return out;
+      });
+
+      var groups = {};
+      norm.forEach(function(r) {
+        var t = String(r['type']||'').toLowerCase().trim();
+        if (!groups[t]) groups[t] = []; groups[t].push(r);
+      });
+      var total = 0;
+      modules.forEach(function(mod) {
+        var key  = (mod.importKey||'').toLowerCase().trim();
+        var rows = groups[key]; if (!rows || !rows.length) return;
+        if (mod.type === 'major-grid') {
+          mod.cards = rows.map(function(r) {
+            return {
+              publication: String(r['publication']||''),
+              headlines: r['headline'] ? [{text:String(r['headline']),url:String(r['url']||'')}] : [],
+              commentary: String(r['umv']||r['commentary']||'')
+            };
+          });
+          total += rows.length;
+        }
+        if (mod.type === 'minor-table') {
+          mod.rows = []; mod.additionalPubs = [];
+          rows.forEach(function(r) {
+            var rowType = String(r['row_type']||'').trim();
+            if (rowType === '+') {
+              mod.additionalPubs.push({name:String(r['publication']||''), url:String(r['url']||'')});
+            } else {
+              mod.rows.push({publication:String(r['publication']||''),headline:String(r['headline']||''),url:String(r['url']||'')});
+            }
+          });
+          total += rows.length;
+        }
+      });
+      render();
+      if (total === 0) alert('No rows were imported. Check that the "type" column values in your spreadsheet match the Import Keys on the modules in the document.');
+    } catch(err) { alert('Error reading spreadsheet: ' + err.message); }
+  };
+  reader.readAsBinaryString(file);
+}
+
+/* ----------------------------------------------------------------
+   TEMPLATE DOWNLOAD
+   ---------------------------------------------------------------- */
+function doDownloadTemplate() {
+  var wb = XLSX.utils.book_new();
+  var cvg = [
+    ['type','publication','headline','url','commentary','row_type'],
+    ['featured','Politico','Shutdown fallout incoming?','https://politico.com/example','20.4 million Total Potential Reach',''],
+    ['featured','The Hill','Here\'s how the DHS shutdown is impacting air travel, TSA','https://thehill.com/example','21.1 million Total Potential Reach',''],
+    ['domestic','Newsweek','DHS Shutdown Forces TSA Workers to Screen Passengers Unpaid','https://newsweek.com/example','',''],
+    ['domestic','Washington Examiner','Travel industry warns of rising airport strain','https://washingtonexaminer.com/example','',''],
+    ['domestic','Reuters','','','','+'  ],
+    ['international','BBC','US homeland security shutdown could mean airport delays','https://bbc.com/example','',''],
+    ['international','The Guardian','Limited government shutdown likely to linger','https://theguardian.com/example','',''],
+  ];
+  var wsCvg = XLSX.utils.aoa_to_sheet(cvg);
+  wsCvg['!cols'] = [{wch:14},{wch:24},{wch:56},{wch:42},{wch:32},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, wsCvg, 'Coverage');
+  var instr = [
+    ['Column','Description','Required?'],
+    ['type','Matches the Import Key on the module. e.g. featured, domestic, international.','Yes'],
+    ['publication','Publication name. Logo and font auto-detected from Publications presets in Settings.','Yes'],
+    ['headline','Article headline text.','Yes for regular rows'],
+    ['url','Full article URL.','Recommended'],
+    ['commentary','Reach or commentary text — displayed as-is under the headline in Hero Grid cards.','Optional'],
+    ['row_type','Leave blank for a regular table row. Enter + to add this publication to the "Additional coverage in…" line instead.','Optional'],
+  ];
+  var wsI = XLSX.utils.aoa_to_sheet(instr); wsI['!cols'] = [{wch:14},{wch:74},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, wsI, 'Instructions');
+  XLSX.writeFile(wb, 'PR_MediaWrap_Template.xlsx');
+}
+
+/* ----------------------------------------------------------------
+   SAVE / LOAD PROJECT
+   ---------------------------------------------------------------- */
+function doSave() {
+  var blob = new Blob([JSON.stringify({v:3,modules:modules,_id:_id},null,2)],{type:'application/json'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'media-wrap-project.json';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+document.getElementById('json-input').addEventListener('change', function(e) {
+  var file = e.target.files[0]; e.target.value = ''; if (!file) return;
+  var r = new FileReader();
+  r.onload = function(ev) {
+    try {
+      var d = JSON.parse(ev.target.result);
+      if (!d.modules) throw new Error('Invalid project file.');
+      modules = d.modules;
+      // backwards-compat: rename 'umv' → 'commentary' in old saves
+      modules.forEach(function(mod) {
+        if (mod.type === 'major-grid' && mod.cards) {
+          mod.cards.forEach(function(c) {
+            if (c.umv !== undefined && c.commentary === undefined) { c.commentary = c.umv; delete c.umv; }
+          });
+        }
+      });
+      _id = d._id || modules.reduce(function(mx,m) { return Math.max(mx,m.id||0); }, 0);
+      render();
+    } catch(err) { alert('Load error: ' + err.message); }
+  };
+  r.readAsText(file);
+});
+
+/* ----------------------------------------------------------------
+   PRINT
+   ---------------------------------------------------------------- */
+/* ----------------------------------------------------------------
+   LOGO SVG DETECTION
+   Clearbit and other CDNs sometimes return SVG logos; html2canvas cannot
+   render SVG <img> tags. When an SVG is detected, the img is hidden and
+   the publication name in its brand font is shown instead (in both the
+   live preview and the PDF export).
+   ---------------------------------------------------------------- */
+var _logoTypeCache = {}; // url → true (is SVG/unusable) | false (is raster/ok)
+
+function detectLogoType(url, callback) {
+  if (!url) { callback(false); return; }
+  if (url in _logoTypeCache) { callback(_logoTypeCache[url]); return; }
+  if (url.startsWith('data:image/svg')) { _logoTypeCache[url] = true;  callback(true);  return; }
+  if (/^data:image\//.test(url))        { _logoTypeCache[url] = false; callback(false); return; }
+  // External URL — HEAD request to read Content-Type
+  fetch(url, { method: 'HEAD', mode: 'cors' })
+    .then(function(r) {
+      var isSvg = (r.headers.get('content-type') || '').toLowerCase().indexOf('svg') >= 0;
+      _logoTypeCache[url] = isSvg;
+      callback(isSvg);
+    })
+    .catch(function() {
+      // CORS error or unreachable — assume raster, leave img visible
+      _logoTypeCache[url] = false;
+      callback(false);
+    });
+}
+
+/* Walk all rendered logo areas and hide any img whose URL is SVG */
+function applyLogoFallbacks() {
+  document.querySelectorAll('.major-card-logo-area').forEach(function(area) {
+    var img  = area.querySelector('.major-card-logo');
+    var text = area.querySelector('.major-card-logo-text');
+    if (!img || !img.src || img.src === window.location.href) return;
+    detectLogoType(img.src, function(isSvg) {
+      if (isSvg) { img.style.display = 'none'; if (text) text.style.display = ''; }
+    });
+  });
+}
+
+/* ----------------------------------------------------------------
+   PDF EXPORT — one-click: generate then auto-download
+   ---------------------------------------------------------------- */
+function doPrint() {
+  var btn = document.getElementById('btn-print');
+  var hadEditMode = document.body.classList.contains('edit-mode');
+  var hadSidebar  = document.body.classList.contains('sidebar-open');
+  document.body.classList.remove('edit-mode', 'sidebar-open');
+
+  btn.textContent = '⏳'; btn.disabled = true;
+
+  var doc = document.getElementById('document');
+  var prevShadow = doc.style.boxShadow;
+  doc.style.boxShadow = 'none'; // strip shadow — @media print rules don't apply to html2canvas
+
+  function restore() {
+    doc.style.boxShadow = prevShadow;
+    if (hadEditMode) document.body.classList.add('edit-mode');
+    if (hadSidebar)  document.body.classList.add('sidebar-open');
+    btn.textContent = '🖨️'; btn.disabled = false;
+  }
+
+  if (typeof html2pdf === 'undefined') { window.print(); restore(); return; }
+
+  // #document is 780px = 8.125in. Letter is 8.5in.
+  // hMargin 0.15in each side → 8.2in content, no clipping.
+  var opt = {
+    margin:      [0.35, 0.15],
+    filename:    'media-wrap.pdf',
+    image:       { type: 'jpeg', quality: 0.97 },
+    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff',
+                   logging: false, scrollX: 0, scrollY: 0 },
+    jsPDF:       { unit: 'in', format: 'letter', orientation: 'portrait' },
+    pagebreak:   { mode: ['css', 'legacy'], avoid: ['.major-card', '.mod-minor-table'] },
+  };
+
+  html2pdf().set(opt).from(doc).output('blob')
+    .then(function(blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a'); a.href = url; a.download = 'media-wrap.pdf'; a.click();
+      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+    })
+    .catch(function(err) { console.error('html2pdf error:', err); window.print(); })
+    .then(restore, restore);
+}
+
+
+document.getElementById('btn-import').addEventListener('click',   function() { document.getElementById('xl-input').click(); });
+document.getElementById('btn-template').addEventListener('click', doDownloadTemplate);
+document.getElementById('btn-save').addEventListener('click',     doSave);
+document.getElementById('btn-load').addEventListener('click',     function() { document.getElementById('json-input').click(); });
+document.getElementById('btn-settings').addEventListener('click', openSettings);
+document.getElementById('btn-print').addEventListener('click',    doPrint);
+
+/* ----------------------------------------------------------------
+   OVERLAY BACKDROP CLOSE + ESC
+   ---------------------------------------------------------------- */
+['card-overlay','row-overlay','html-overlay'].forEach(function(id) {
+  document.getElementById(id).addEventListener('click', function(e) {
+    if (e.target === this) {
+      if (id === 'card-overlay')      closeCardModal();
+      else if (id === 'row-overlay')  closeRowModal();
+      else if (id === 'html-overlay') closeHtmlModal();
+    }
+  });
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { closeCardModal(); closeRowModal(); closeHtmlModal(); closeSettings(); }
+});
+
+/* ----------------------------------------------------------------
+   UTILITIES
+   ---------------------------------------------------------------- */
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escA(s) { return String(s||'').replace(/"/g,'&quot;'); }
+function fmtDate(d) {
+  return String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')+'/'+d.getFullYear();
+}
+
+/* ----------------------------------------------------------------
+   INIT
+   ---------------------------------------------------------------- */
+function initDefault() {
+  modules = settings.defaultTemplate.map(function(tpl) {
+    var m = JSON.parse(JSON.stringify(tpl));
+    m.id = gid();
+    if (m.type === 'major-grid')  { m.cards = []; }
+    if (m.type === 'minor-table') { m.rows = []; m.additionalPubs = []; }
+    if (m.type === 'header')      { m.date = fmtDate(new Date()); }
+    return m;
+  });
+  render();
+}
+
+loadSettings();
+applySettings();
+initDefault();
+</script>
+</body>
+</html>
