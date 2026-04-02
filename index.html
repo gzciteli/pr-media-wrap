@@ -37,6 +37,7 @@
   --card-cm-size:     11.5px;
   --card-cm-align:    left;
   --header-text-size: 10.5px;
+  --html-block-size:  13.5px;
 
   /* UST brand font stack: Gotham for anyone who has it (UST employees),
      Merriweather (loaded from Google Fonts) for everyone else, Arial as fallback */
@@ -138,6 +139,25 @@ body.sidebar-open #page-wrap { margin-right: 340px; }
 }
 .mod-ctrl-bar button:hover { background: rgba(255,255,255,.28); color: #fff; }
 .mod-ctrl-bar button.del:hover { background: #c0392b; color: #fff; }
+.mod-ctrl-bar button.info-btn { font-size: 14px; font-weight: 700; }
+
+/* Module info popover */
+.mod-info-popover {
+  position: fixed; z-index: 9999;
+  background: #1a2a36; color: #d0dde6;
+  border-radius: 7px; padding: 11px 14px;
+  font-size: 11.5px; font-family: Arial, sans-serif; line-height: 1.55;
+  box-shadow: 0 4px 18px rgba(0,0,0,.45);
+  min-width: 190px; max-width: 260px;
+  pointer-events: none;
+}
+.mod-info-popover strong { color: #fff; }
+.mod-info-popover .mip-row { display: flex; justify-content: space-between; gap: 14px; }
+.mod-info-popover .mip-row + .mip-row { margin-top: 3px; }
+.mod-info-popover .mip-label { color: #8aadcc; }
+.mod-info-popover .mip-val { color: #e8f2ff; font-weight: 600; }
+.mod-info-popover .mip-divider { border: none; border-top: 1px solid rgba(255,255,255,.12); margin: 7px 0; }
+.mod-info-popover .mip-expanded { color: #5bd4a0; font-weight: 700; }
 
 /* Import-key strip */
 .import-key-row {
@@ -194,6 +214,7 @@ body.sidebar-open #page-wrap { margin-right: 340px; }
   padding: 12px 28px 6px; font-size: var(--sec-heading-size); font-weight: 700;
   color: var(--ust-blue); font-family: var(--brand-font); letter-spacing: .3px;
   margin: 0 28px; padding-left: 0; padding-right: 0;
+  break-after: avoid; page-break-after: avoid;
 }
 
 /* =================================================================
@@ -301,7 +322,7 @@ body.edit-mode .minor-addl-link:hover { background: rgba(4,128,200,.07); border-
    ================================================================= */
 .mod-html-block { padding: 14px 28px; }
 .html-block-rendered {
-  font-size: 13.5px; line-height: 1.55; color: #333; min-height: 20px; outline: none;
+  font-size: var(--html-block-size); line-height: 1.55; color: #333; min-height: 20px; outline: none;
   font-family: var(--brand-font);
 }
 .html-block-rendered a { color: var(--accent); text-decoration: none; }
@@ -416,6 +437,14 @@ body.sidebar-open #settings-sidebar { transform: translateX(0); }
 .stab-panel { display: none; }
 .stab-panel.active { display: block; }
 .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+.sg-group { margin-bottom: 4px; }
+.sg-group-label {
+  font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.1px;
+  color: var(--ust-light-blue); font-family: var(--brand-font);
+  margin: 14px 0 7px; padding-bottom: 5px;
+  border-bottom: 1.5px solid rgba(4,128,200,.2);
+}
+.sg-group:first-child .sg-group-label { margin-top: 2px; }
 
 /* Publications table in settings */
 .pub-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -457,6 +486,27 @@ body.sidebar-open #settings-sidebar { transform: translateX(0); }
   .major-grid { break-inside: avoid; gap: 10px; }
   .mod-minor-table { break-inside: avoid; }
 }
+
+/* =================================================================
+   PAGE BREAK INDICATOR — visible in editor, auto-hidden outside edit-mode
+   ================================================================= */
+.page-break-line {
+  height: 24px; display: flex; align-items: center; justify-content: center;
+  background: #edf4fb;
+  border-top: 2px dashed rgba(4,128,200,.5);
+  border-bottom: 2px dashed rgba(4,128,200,.5);
+  margin: 0; pointer-events: none; position: relative;
+}
+.page-break-label {
+  font-size: 9px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ust-light-blue); font-family: var(--brand-font); white-space: nowrap;
+  padding: 0 12px; background: #edf4fb;
+}
+/* Hide page break lines whenever not in edit mode (covers PDF export too) */
+body:not(.edit-mode) .page-break-line { display: none !important; }
+
+/* PDF export: force page break before modules marked by doPrint() */
+.pdf-page-start { break-before: page; page-break-before: always; }
 </style>
 </head>
 <body class="edit-mode">
@@ -611,15 +661,21 @@ body.sidebar-open #settings-sidebar { transform: translateX(0); }
 
     <!-- THEME & TYPOGRAPHY -->
     <div id="stab-theme" class="stab-panel active">
-      <div class="settings-grid">
-        <div class="fg"><label>Header BG Color</label><input type="color" id="s-header-bg"></div>
-        <div class="fg"><label>Accent / Link Color</label><input type="color" id="s-accent"></div>
-        <div class="fg"><label>Stats Number (px)</label><input type="number" id="s-stat-val" min="24" max="120" style="width:72px"></div>
-        <div class="fg"><label>Stats Label (px)</label><input type="number" id="s-stat-lbl" min="8" max="24" style="width:72px"></div>
-        <div class="fg"><label>Section Heading (px)</label><input type="number" id="s-sec-head" min="12" max="36" style="width:72px"></div>
-        <div class="fg"><label>Table Text (px)</label><input type="number" id="s-tbl-txt" min="8" max="20" style="width:72px"></div>
-        <div class="fg"><label>Card Headline (px)</label><input type="number" id="s-card-hl" min="8" max="24" style="width:72px"></div>
-        <div class="fg"><label>Card Commentary (px)</label><input type="number" id="s-card-cm" min="8" max="20" style="width:72px"></div>
+
+      <div class="sg-group">
+        <div class="sg-group-label">Colors</div>
+        <div class="settings-grid">
+          <div class="fg"><label>Header BG</label><input type="color" id="s-header-bg"></div>
+          <div class="fg"><label>Accent / Links</label><input type="color" id="s-accent"></div>
+        </div>
+      </div>
+
+      <div class="sg-group">
+        <div class="sg-group-label">Hero Grid</div>
+        <div class="settings-grid">
+          <div class="fg"><label>Headline (px)</label><input type="number" id="s-card-hl" min="8" max="24" style="width:72px"></div>
+          <div class="fg"><label>Commentary (px)</label><input type="number" id="s-card-cm" min="8" max="20" style="width:72px"></div>
+        </div>
         <div class="fg"><label>Commentary Align</label>
           <select id="s-card-cm-align" style="width:100%">
             <option value="left">Left</option>
@@ -628,6 +684,49 @@ body.sidebar-open #settings-sidebar { transform: translateX(0); }
           </select>
         </div>
       </div>
+
+      <div class="sg-group">
+        <div class="sg-group-label">Stats Row</div>
+        <div class="settings-grid">
+          <div class="fg"><label>Number (px)</label><input type="number" id="s-stat-val" min="24" max="120" style="width:72px"></div>
+          <div class="fg"><label>Label (px)</label><input type="number" id="s-stat-lbl" min="8" max="24" style="width:72px"></div>
+        </div>
+      </div>
+
+      <div class="sg-group">
+        <div class="sg-group-label">Table</div>
+        <div class="settings-grid">
+          <div class="fg"><label>Text (px)</label><input type="number" id="s-tbl-txt" min="8" max="20" style="width:72px"></div>
+          <div></div>
+        </div>
+      </div>
+
+      <div class="sg-group">
+        <div class="sg-group-label">Text Block</div>
+        <div class="settings-grid">
+          <div class="fg"><label>Font Size (px)</label><input type="number" id="s-html-block" min="8" max="24" style="width:72px"></div>
+          <div></div>
+        </div>
+      </div>
+
+      <div class="sg-group">
+        <div class="sg-group-label">Section Heading</div>
+        <div class="settings-grid">
+          <div class="fg"><label>Size (px)</label><input type="number" id="s-sec-head" min="12" max="36" style="width:72px"></div>
+          <div></div>
+        </div>
+      </div>
+
+      <div class="sg-group">
+        <div class="sg-group-label">Dynamic Expansion</div>
+        <div class="settings-grid">
+          <div class="fg"><label>Max expand (×)</label><input type="number" id="s-max-expand" min="1" max="4" step="0.1" style="width:72px">
+            <div class="hint">How large a module can grow relative to its natural height. 1.5 = 50% growth max.</div>
+          </div>
+          <div></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- PUBLICATIONS -->
@@ -770,6 +869,7 @@ var DEFAULT_SETTINGS = {
     statValueSize:52, statLabelSize:11.5,
     sectionHeadingSize:17, tableTextSize:12.5,
     cardHlSize:12.5, cardCmSize:11.5, cardCmAlign:'left',
+    htmlBlockSize:13.5,
   },
   editor: { showLabels: false },
   publications: DEFAULT_PUBS,
@@ -867,10 +967,13 @@ function applySettings() {
   r.setProperty('--card-hl-size',     settings.typography.cardHlSize     + 'px');
   r.setProperty('--card-cm-size',     settings.typography.cardCmSize     + 'px');
   r.setProperty('--card-cm-align',    settings.typography.cardCmAlign    || 'left');
+  r.setProperty('--html-block-size',  (settings.typography.htmlBlockSize || 13.5) + 'px');
   // Editor preferences
   document.body.classList.toggle('show-labels', !!(settings.editor && settings.editor.showLabels));
   var sl = document.getElementById('s-show-labels');
   if (sl) sl.checked = !!(settings.editor && settings.editor.showLabels);
+  // Re-run page layout so break indicators reflect any size changes
+  schedulePageLayout();
 }
 
 function getPubPreset(pubName) {
@@ -897,6 +1000,7 @@ function render() {
   var doc = document.getElementById('document');
   doc.innerHTML = '';
   modules.forEach(function(mod, idx) { doc.appendChild(buildModWrap(mod, idx)); });
+  schedulePageLayout();
 }
 
 function buildModWrap(mod, idx) {
@@ -910,6 +1014,7 @@ function buildModWrap(mod, idx) {
     ? '<button title="Edit HTML source" data-action="edit-html" data-id="' + mod.id + '">&lt;/&gt;</button>'
     : '';
   ctrl.innerHTML = htmlBtn +
+    '<button class="info-btn" title="Module info" data-action="info" data-id="' + mod.id + '">ⓘ</button>' +
     '<button title="Move up"      data-action="mv-up"   data-idx="' + idx + '">↑</button>' +
     '<button title="Move down"    data-action="mv-down" data-idx="' + idx + '">↓</button>' +
     '<button class="del" title="Delete module" data-action="del" data-idx="' + idx + '">✕</button>';
@@ -920,6 +1025,7 @@ function buildModWrap(mod, idx) {
     if (a === 'mv-down')  mvMod(+btn.dataset.idx,  1);
     if (a === 'del')      delMod(+btn.dataset.idx);
     if (a === 'edit-html') openHtmlModal(+btn.dataset.id);
+    if (a === 'info')     openModuleInfo(+btn.dataset.id, btn, wrap);
   });
   wrap.appendChild(ctrl);
 
@@ -928,9 +1034,25 @@ function buildModWrap(mod, idx) {
     var ikr = document.createElement('div');
     ikr.className = 'import-key-row';
     ikr.innerHTML = '<span>Import key:</span>' +
-      '<input value="' + esc(mod.importKey || '') + '" placeholder="e.g. featured">' +
+      '<input class="ikr-key-input" value="' + esc(mod.importKey || '') + '" placeholder="e.g. featured">' +
       '<span style="color:#a8b8c4;font-size:9px">→ matches &quot;type&quot; column in spreadsheet</span>';
-    ikr.querySelector('input').addEventListener('input', function() { setField(mod.id, 'importKey', this.value); });
+    ikr.querySelector('.ikr-key-input').addEventListener('input', function() { setField(mod.id, 'importKey', this.value); });
+    // Expand weight control — shown for all types that have a default weight
+    if (TYPE_EXPAND_WEIGHT[mod.type] != null) {
+      var ew = typeof mod.expandWeight === 'number' ? mod.expandWeight : (TYPE_EXPAND_WEIGHT[mod.type] || 0);
+      var ewSpan = document.createElement('span');
+      ewSpan.style.cssText = 'margin-left:auto;display:flex;align-items:center;gap:4px;flex-shrink:0';
+      ewSpan.innerHTML =
+        '<span style="color:#a8b8c4;font-size:9px;text-transform:uppercase;letter-spacing:.5px">↕ expand weight</span>' +
+        '<input type="number" min="0" max="20" value="' + esc(String(ew)) + '" ' +
+          'title="Page-fill priority: 0 = never expand, higher = expands first to fill page 1" ' +
+          'style="width:38px;height:16px;font-size:10px;padding:0 3px;border:1px solid #c8d4dc;border-radius:2px;background:#fff;text-align:center;font-family:inherit">';
+      ewSpan.querySelector('input').addEventListener('change', function() {
+        var m = modules.find(function(x) { return x.id === mod.id; });
+        if (m) { m.expandWeight = parseInt(this.value, 10) || 0; schedulePageLayout(); }
+      });
+      ikr.appendChild(ewSpan);
+    }
     wrap.appendChild(ikr);
   }
 
@@ -1064,7 +1186,8 @@ function buildCard(modId, card, ci) {
   if (logoUrl) {
     logoHtml =
       '<img class="major-card-logo" src="' + escA(logoUrl) + '" alt="' + escA(card.publication) + '"' +
-        ' onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
+        ' onload="schedulePageLayout()"' +
+        ' onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\';schedulePageLayout()">' +
       '<span class="major-card-logo-text" style="display:none;' + logoTextStyle + '">' +
         esc(card.publication) + '</span>';
   } else {
@@ -1400,11 +1523,12 @@ function openSettings() {
   document.getElementById('s-card-hl').value        = settings.typography.cardHlSize;
   document.getElementById('s-card-cm').value        = settings.typography.cardCmSize;
   document.getElementById('s-card-cm-align').value  = settings.typography.cardCmAlign || 'left';
+  document.getElementById('s-html-block').value     = settings.typography.htmlBlockSize || 13.5;
   // live-update as user changes values
   ['s-header-bg','s-accent'].forEach(function(id) {
     document.getElementById(id).oninput = applyAndSaveTheme;
   });
-  ['s-stat-val','s-stat-lbl','s-sec-head','s-tbl-txt','s-card-hl','s-card-cm'].forEach(function(id) {
+  ['s-stat-val','s-stat-lbl','s-sec-head','s-tbl-txt','s-card-hl','s-card-cm','s-html-block'].forEach(function(id) {
     document.getElementById(id).oninput = applyAndSaveTypo;
   });
   document.getElementById('s-card-cm-align').onchange = applyAndSaveTypo;
@@ -1443,6 +1567,7 @@ function applyAndSaveTypo() {
   settings.typography.cardHlSize          = +document.getElementById('s-card-hl').value  || 12.5;
   settings.typography.cardCmSize          = +document.getElementById('s-card-cm').value  || 11.5;
   settings.typography.cardCmAlign        = document.getElementById('s-card-cm-align').value || 'left';
+  settings.typography.htmlBlockSize       = +document.getElementById('s-html-block').value || 13.5;
   applySettings(); saveSettings();
 }
 
@@ -1733,6 +1858,7 @@ function importSettingsFile(e) {
       document.getElementById('s-card-hl').value       = settings.typography.cardHlSize;
       document.getElementById('s-card-cm').value       = settings.typography.cardCmSize;
       document.getElementById('s-card-cm-align').value = settings.typography.cardCmAlign || 'left';
+      document.getElementById('s-html-block').value    = settings.typography.htmlBlockSize || 13.5;
       // Also patch import keys on the currently live modules so this session
       // immediately reflects the imported template without needing a page reload.
       var tpl = settings.defaultTemplate || DEFAULT_TEMPLATE;
@@ -2032,6 +2158,353 @@ function convertSvgImgsForExport(container) {
 }
 
 /* ----------------------------------------------------------------
+   PAGE LAYOUT — page-break indicators & module expansion
+   ----------------------------------------------------------------
+   PAGE_HEIGHT is the px height of one letter-page worth of content
+   at the 780px document width.
+     Letter = 11"  |  top+bottom margin = 0.35" × 2 = 0.70"
+     Content height = 10.30"
+     780px / (8.5 - 0.30)" content width = ~95.1 px/in
+     10.30" × 95.1 px/in ≈ 980 px
+   ---------------------------------------------------------------- */
+var PAGE_HEIGHT = 980;
+
+/* Default expansion priority weights by module type.
+   Hero grid (10) is the star — its logo area grows to fill slack.
+   Set to 0 to prevent a type from ever being chosen for expansion.  */
+var TYPE_EXPAND_WEIGHT = {
+  'major-grid':      10,
+  'stats':            5,
+  'html-block':       3,
+  'minor-table':      1,
+  'section-heading':  0,
+  'header':           0,
+};
+
+function getExpandWeight(mod) {
+  if (typeof mod.expandWeight === 'number') return mod.expandWeight;
+  return (TYPE_EXPAND_WEIGHT[mod.type] != null) ? TYPE_EXPAND_WEIGHT[mod.type] : 0;
+}
+
+var _plTimer = null;
+function schedulePageLayout() {
+  if (_plTimer) clearTimeout(_plTimer);
+  _plTimer = setTimeout(doPageLayout, 90);
+}
+
+function doPageLayout() {
+  var docEl = document.getElementById('document');
+  if (!docEl) return;
+
+  /* ── 1. Clear prior indicators & expansion state ── */
+  docEl.querySelectorAll('.page-break-line').forEach(function(el) { el.remove(); });
+  docEl.querySelectorAll('.major-card-top[data-xpand]').forEach(function(ct) {
+    ct.style.removeProperty('min-height');
+    ct.removeAttribute('data-xpand');
+  });
+  docEl.querySelectorAll('.major-card-logo[data-xpand]').forEach(function(el) {
+    el.style.removeProperty('max-height');
+    el.style.removeProperty('max-width');
+    el.removeAttribute('data-xpand');
+  });
+  docEl.querySelectorAll('.major-card-logo-text[data-xpand]').forEach(function(el) {
+    el.style.removeProperty('font-size');
+    el.removeAttribute('data-xpand');
+  });
+  docEl.querySelectorAll('.major-card-headline[data-xpand]').forEach(function(el) {
+    el.style.removeProperty('font-size');
+    el.removeAttribute('data-xpand');
+  });
+  docEl.querySelectorAll('.mod-wrap[data-xpad]').forEach(function(w) {
+    w.style.removeProperty('padding-top');
+    w.style.removeProperty('padding-bottom');
+    w.removeAttribute('data-xpad');
+  });
+  docEl.querySelectorAll('.mod-wrap[data-xpx]').forEach(function(w) {
+    w.removeAttribute('data-xpx');
+  });
+
+  /* ── 2. Measure module heights; greedily assign to pages ──
+     Heights are measured with edit-mode temporarily removed so that
+     import-key-rows, add-row buttons and other editor-only elements
+     don't inflate the measurements.  This makes the editor's page
+     assignment match doPrint() which also runs without edit-mode. ── */
+  var wraps = Array.from(docEl.querySelectorAll(':scope > .mod-wrap'));
+  if (!wraps.length) return;
+
+  var hadEM = document.body.classList.contains('edit-mode');
+  if (hadEM) document.body.classList.remove('edit-mode');
+  var heights = wraps.map(function(w) { return w.getBoundingClientRect().height; });
+  if (hadEM) document.body.classList.add('edit-mode');
+  var pages = [[]], pageTotals = [0];
+  heights.forEach(function(h, i) {
+    var pi = pages.length - 1;
+    if (pageTotals[pi] + h > PAGE_HEIGHT && pageTotals[pi] > 0) {
+      pages.push([]); pageTotals.push(0); pi = pages.length - 1;
+    }
+    pages[pi].push(i);
+    pageTotals[pi] += h;
+  });
+
+  /* ── 2b. Orphan prevention: a section-heading must not strand at a page bottom.
+     Bump any page-ending section-heading to the top of the next page.
+     Loop until stable — handles stacked headings (e.g. two headings in a row). ── */
+  var moved = true;
+  while (moved) {
+    moved = false;
+    for (var p = 0; p < pages.length - 1; p++) {
+      if (!pages[p].length) continue;
+      var lastI = pages[p][pages[p].length - 1];
+      if (modules[lastI] && modules[lastI].type === 'section-heading') {
+        pages[p].pop();
+        pageTotals[p] -= heights[lastI];
+        pages[p + 1].unshift(lastI);
+        pageTotals[p + 1] += heights[lastI];
+        moved = true;
+      }
+    }
+  }
+
+  /* ── 3. Expand the highest-weight module on page 1 to fill available space ── */
+  var slack = PAGE_HEIGHT - pageTotals[0];
+  if (slack > 10 && pages[0].length > 0) {
+    var bestIdx = -1, bestWeight = -1;
+    pages[0].forEach(function(i) {
+      var w = getExpandWeight(modules[i]);
+      if (w > bestWeight) { bestWeight = w; bestIdx = i; }
+    });
+    if (bestIdx >= 0 && bestWeight > 0) {
+      // Pass the pre-measured (no-edit-mode) height so expandModule uses the
+      // same naturalH that was used to compute slack, avoiding a cap/slack mismatch.
+      expandModule(wraps[bestIdx], modules[bestIdx], slack, heights[bestIdx]);
+    }
+  }
+
+  /* ── 4. Re-measure after expansion; re-assign pages; insert break indicators.
+     Same edit-mode stripping as step 2 for consistent PDF-equivalent heights.
+     IMPORTANT: if the re-assignment pushes the expanded module off page 1 (this
+     can happen when sub-pixel rendering causes the expanded total to marginally
+     exceed PAGE_HEIGHT), revert the expansion entirely and fall back to the
+     natural-height page assignment.  We never want a module to end up oversized
+     on page 2 because an expansion that was supposed to fill page 1 went slightly
+     over. ── */
+  if (hadEM) document.body.classList.remove('edit-mode');
+  var heights2 = wraps.map(function(w) { return w.getBoundingClientRect().height; });
+  if (hadEM) document.body.classList.add('edit-mode');
+
+  var pages2 = [[]], pageTotals2 = [0];
+  heights2.forEach(function(h, i) {
+    var pi2 = pages2.length - 1;
+    if (pageTotals2[pi2] + h > PAGE_HEIGHT && pageTotals2[pi2] > 0) {
+      pages2.push([]); pageTotals2.push(0); pi2 = pages2.length - 1;
+    }
+    pages2[pi2].push(i);
+    pageTotals2[pi2] += h;
+  });
+  var moved2 = true;
+  while (moved2) {
+    moved2 = false;
+    for (var p2 = 0; p2 < pages2.length - 1; p2++) {
+      if (!pages2[p2].length) continue;
+      var lastI2 = pages2[p2][pages2[p2].length - 1];
+      if (modules[lastI2] && modules[lastI2].type === 'section-heading') {
+        pages2[p2].pop();
+        pageTotals2[p2] -= heights2[lastI2];
+        pages2[p2 + 1].unshift(lastI2);
+        pageTotals2[p2 + 1] += heights2[lastI2];
+        moved2 = true;
+      }
+    }
+  }
+
+  /* If the module we expanded is no longer on page 1, the expansion overshot —
+     revert it so the module stays at its natural size, and fall back to the
+     original (natural-height) page assignment for break-line placement. */
+  var expandedOnPage1 = (bestIdx < 0) || (pages2[0].indexOf(bestIdx) >= 0);
+  if (!expandedOnPage1) {
+    docEl.querySelectorAll('.major-card-top[data-xpand]').forEach(function(ct) {
+      ct.style.removeProperty('min-height'); ct.removeAttribute('data-xpand');
+    });
+    docEl.querySelectorAll('.major-card-logo[data-xpand]').forEach(function(el) {
+      el.style.removeProperty('max-height'); el.style.removeProperty('max-width'); el.removeAttribute('data-xpand');
+    });
+    docEl.querySelectorAll('.major-card-logo-text[data-xpand]').forEach(function(el) {
+      el.style.removeProperty('font-size'); el.removeAttribute('data-xpand');
+    });
+    docEl.querySelectorAll('.major-card-headline[data-xpand]').forEach(function(el) {
+      el.style.removeProperty('font-size'); el.removeAttribute('data-xpand');
+    });
+    docEl.querySelectorAll('.mod-wrap[data-xpad]').forEach(function(w) {
+      w.style.removeProperty('padding-top'); w.style.removeProperty('padding-bottom'); w.removeAttribute('data-xpad');
+    });
+    docEl.querySelectorAll('.mod-wrap[data-xpx]').forEach(function(w) { w.removeAttribute('data-xpx'); });
+    // Fall back to the natural-height page assignment
+    pages2 = pages;
+  }
+
+  for (var p3 = 1; p3 < pages2.length; p3++) {
+    if (!pages2[p3].length) continue;
+    var pbLine = document.createElement('div');
+    pbLine.className = 'page-break-line';
+    pbLine.innerHTML = '<span class="page-break-label">— Page ' + (p3 + 1) + ' —</span>';
+    wraps[pages2[p3][0]].before(pbLine);
+  }
+}
+
+/* ----------------------------------------------------------------
+   MODULE INFO POPOVER — ⓘ button in edit mode
+   ---------------------------------------------------------------- */
+var _infoPopover = null;
+function openModuleInfo(modId, btn, wrap) {
+  /* Remove any existing popover */
+  if (_infoPopover) { _infoPopover.remove(); _infoPopover = null; }
+
+  var mod = modules.find(function(m) { return m.id === modId; });
+  if (!mod) return;
+
+  /* Gather data */
+  var typeLabel = {
+    'header': 'Header Bar', 'stats': 'Stats Row',
+    'section-heading': 'Section Heading', 'major-grid': 'Hero Grid',
+    'minor-table': 'Table', 'html-block': 'Text Block'
+  }[mod.type] || mod.type;
+
+  var expandWeight = (mod.expandWeight !== undefined)
+    ? mod.expandWeight
+    : (TYPE_EXPAND_WEIGHT[mod.type] !== undefined ? TYPE_EXPAND_WEIGHT[mod.type] : 0);
+
+  var xpx = wrap.getAttribute('data-xpx');
+  var expanded = xpx ? '+' + xpx + 'px' : null;
+
+  /* Build rows */
+  function row(label, val) {
+    return '<div class="mip-row"><span class="mip-label">' + label + '</span><span class="mip-val">' + val + '</span></div>';
+  }
+
+  var rows = row('Type', typeLabel) + row('Expand weight', expandWeight);
+  if (expanded) {
+    rows += '<div class="mip-row"><span class="mip-label">Expanded by</span><span class="mip-val mip-expanded">' + expanded + '</span></div>';
+  }
+  rows += '<hr class="mip-divider">';
+
+  /* Type-specific font info */
+  if (mod.type === 'major-grid') {
+    var hlEl = wrap.querySelector('.major-card-headline');
+    var hlActual  = hlEl ? Math.round(parseFloat(getComputedStyle(hlEl).fontSize) * 10) / 10 : '–';
+    var hlDefault = (settings.typography.cardHlSize || 12.5);
+    rows += row('Card headline', hlActual + 'px' + (expanded ? ' (base ' + hlDefault + 'px)' : ''));
+    var cmEl = wrap.querySelector('.major-card-commentary');
+    var cmActual = cmEl ? Math.round(parseFloat(getComputedStyle(cmEl).fontSize) * 10) / 10 : '–';
+    rows += row('Commentary', cmActual + 'px');
+    var logoEl = wrap.querySelector('.major-card-logo');
+    if (logoEl) {
+      var logoH = Math.round(parseFloat(getComputedStyle(logoEl).maxHeight) * 10) / 10;
+      rows += row('Logo max-height', logoH + 'px');
+    }
+  } else if (mod.type === 'html-block') {
+    var hbEl = wrap.querySelector('.html-block-rendered');
+    var hbActual = hbEl ? Math.round(parseFloat(getComputedStyle(hbEl).fontSize) * 10) / 10 : '–';
+    rows += row('Text size', hbActual + 'px' + ' (setting: ' + (settings.typography.htmlBlockSize || 13.5) + 'px)');
+  } else if (mod.type === 'stats') {
+    rows += row('Stat value', (settings.typography.statValueSize || 52) + 'px');
+    rows += row('Stat label', (settings.typography.statLabelSize || 11.5) + 'px');
+  } else if (mod.type === 'minor-table') {
+    rows += row('Table text', (settings.typography.tableTextSize || 12.5) + 'px');
+  } else if (mod.type === 'section-heading') {
+    rows += row('Heading size', (settings.typography.sectionHeadingSize || 17) + 'px');
+  } else if (mod.type === 'header') {
+    rows += row('Header text', (settings.typography.headerTextSize || 10.5) + 'px');
+  }
+
+  /* Measure height */
+  var h = Math.round(wrap.getBoundingClientRect().height);
+  rows += row('Module height', h + 'px');
+
+  /* Build & position popover */
+  var pop = document.createElement('div');
+  pop.className = 'mod-info-popover';
+  pop.innerHTML = '<strong>' + typeLabel + '</strong><hr class="mip-divider">' + rows;
+  document.body.appendChild(pop);
+  _infoPopover = pop;
+
+  /* Position: anchor to button, flip left if near right edge */
+  var br = btn.getBoundingClientRect();
+  var pw = pop.offsetWidth || 200;
+  var left = br.right + 6;
+  if (left + pw > window.innerWidth - 10) left = br.left - pw - 6;
+  var top  = br.top;
+  if (top + pop.offsetHeight > window.innerHeight - 10) top = window.innerHeight - pop.offsetHeight - 10;
+  pop.style.left = left + 'px';
+  pop.style.top  = Math.max(top, 8) + 'px';
+
+  /* Dismiss on next outside click */
+  function dismiss(e) {
+    if (_infoPopover && !_infoPopover.contains(e.target)) {
+      _infoPopover.remove(); _infoPopover = null;
+      document.removeEventListener('mousedown', dismiss, true);
+    }
+  }
+  setTimeout(function() { document.addEventListener('mousedown', dismiss, true); }, 0);
+}
+
+function expandModule(wrap, mod, extraPx, naturalH) {
+  /* Cap at 1.5× the module's natural height so it never looks absurd.
+     naturalH is passed from doPageLayout so it uses the same no-edit-mode
+     measurement as the slack calculation, avoiding a cap/slack mismatch. */
+  if (naturalH === undefined) naturalH = wrap.getBoundingClientRect().height;
+  var capped = Math.min(extraPx, naturalH * 1.5);
+  if (capped < 8) return;
+
+  if (mod.type === 'major-grid') {
+    /* Hero grid: grow the brand-color logo area on each card row,
+       and scale logos + headline text proportionally. */
+    var cardTops = Array.from(wrap.querySelectorAll('.major-card-top'));
+    if (!cardTops.length) return;
+    var nRows  = Math.ceil(cardTops.length / 2);
+    var perRow = capped / nRows;
+    var totalScale = 0;
+    cardTops.forEach(function(ct) {
+      var origH = ct.getBoundingClientRect().height;
+      var newH  = origH + perRow;
+      ct.style.minHeight = newH + 'px';
+      ct.setAttribute('data-xpand', '1');
+      /* Scale logo image and text-fallback proportionally.
+         Caps keep things tasteful on very large expansions. */
+      var scale = newH / Math.max(origH, 1);
+      totalScale += scale;
+      var logoImg = ct.querySelector('.major-card-logo');
+      var logoTxt = ct.querySelector('.major-card-logo-text');
+      if (logoImg) {
+        logoImg.style.maxHeight = Math.min(32 * scale, 90)  + 'px';
+        logoImg.style.maxWidth  = Math.min(130 * scale, 260) + 'px';
+        logoImg.setAttribute('data-xpand', '1');
+      }
+      if (logoTxt) {
+        logoTxt.style.fontSize = Math.min(20 * scale, 52) + 'px';
+        logoTxt.setAttribute('data-xpand', '1');
+      }
+    });
+    /* Scale card headlines by the average card-top expansion ratio.
+       Cap at 18px so the grid never looks oversized. */
+    var avgScale = totalScale / cardTops.length;
+    wrap.querySelectorAll('.major-card-headline').forEach(function(hl) {
+      var baseSize = parseFloat(getComputedStyle(hl).fontSize) || 12.5;
+      hl.style.fontSize = Math.min(baseSize * avgScale, 18) + 'px';
+      hl.setAttribute('data-xpand', '1');
+    });
+    /* Record expansion amount for the info inspector */
+    wrap.setAttribute('data-xpx', Math.round(capped) + '');
+  } else {
+    /* Other expandable modules: distribute extra space as top/bottom padding */
+    var half = Math.floor(capped / 2);
+    wrap.style.paddingTop    = half + 'px';
+    wrap.style.paddingBottom = half + 'px';
+    wrap.setAttribute('data-xpad', '1');
+    wrap.setAttribute('data-xpx', Math.round(capped) + '');
+  }
+}
+
+/* ----------------------------------------------------------------
    PDF EXPORT — one-click: generate then auto-download
    ---------------------------------------------------------------- */
 function doPrint() {
@@ -2068,6 +2541,42 @@ function doPrint() {
         .toLowerCase() + '.pdf'
     : 'media-wrap.pdf';
 
+  // ── Compute page assignment (same algorithm as doPageLayout) and mark
+  //    the first .mod-wrap on each page 2+ with .pdf-page-start so html2pdf
+  //    knows exactly where to cut — independent of CSS break properties.
+  var wraps = Array.from(doc.querySelectorAll(':scope > .mod-wrap'));
+  var heights = wraps.map(function(w) { return w.getBoundingClientRect().height; });
+  var pages = [[]], pageTotals = [0];
+  heights.forEach(function(h, i) {
+    var pi = pages.length - 1;
+    if (pageTotals[pi] + h > PAGE_HEIGHT && pageTotals[pi] > 0) {
+      pages.push([]); pageTotals.push(0); pi = pages.length - 1;
+    }
+    pages[pi].push(i); pageTotals[pi] += h;
+  });
+  // Orphan prevention: bump trailing section-headings to next page
+  var moved = true;
+  while (moved) {
+    moved = false;
+    for (var p2 = 0; p2 < pages.length - 1; p2++) {
+      if (!pages[p2].length) continue;
+      var lastI = pages[p2][pages[p2].length - 1];
+      if (modules[lastI] && modules[lastI].type === 'section-heading') {
+        pages[p2].pop(); pageTotals[p2] -= heights[lastI];
+        pages[p2 + 1].unshift(lastI); pageTotals[p2 + 1] += heights[lastI];
+        moved = true;
+      }
+    }
+  }
+  // Inject marker class on first wrap of each new page
+  var pbWraps = [];
+  for (var p3 = 1; p3 < pages.length; p3++) {
+    if (pages[p3].length) {
+      wraps[pages[p3][0]].classList.add('pdf-page-start');
+      pbWraps.push(wraps[pages[p3][0]]);
+    }
+  }
+
   var opt = {
     margin:      [0.35, 0.15],
     filename:    pdfFilename,
@@ -2075,7 +2584,10 @@ function doPrint() {
     html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff',
                    logging: false, scrollX: 0, scrollY: 0 },
     jsPDF:       { unit: 'in', format: 'letter', orientation: 'portrait' },
-    pagebreak:   { mode: ['css', 'legacy'], avoid: ['.major-card', '.mod-minor-table'] },
+    // Force page breaks exactly where our layout algorithm places them.
+    // 'before' is the only reliable mechanism in html2pdf — it finds the
+    // element in the rendered canvas and cuts there regardless of pixel math.
+    pagebreak:   { before: '.pdf-page-start' },
   };
 
   // Before html2canvas: swap box-shadow → real border on each card so cards
@@ -2092,12 +2604,15 @@ function doPrint() {
     });
   });
 
+  function cleanupPbMarkers() { pbWraps.forEach(function(w) { w.classList.remove('pdf-page-start'); }); }
+
   // Rasterise any SVG logos before html2canvas sees them, then restore afterwards
   convertSvgImgsForExport(doc).then(function(restoreFns) {
     html2pdf().set(opt).from(doc).output('blob')
       .then(function(blob) {
         restoreFns.forEach(function(fn) { fn(); });
         cardRestores.forEach(function(fn) { fn(); });
+        cleanupPbMarkers();
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a'); a.href = url; a.download = 'media-wrap.pdf'; a.click();
         setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
@@ -2105,6 +2620,7 @@ function doPrint() {
       .catch(function(err) {
         restoreFns.forEach(function(fn) { fn(); });
         cardRestores.forEach(function(fn) { fn(); });
+        cleanupPbMarkers();
         console.error('html2pdf error:', err); window.print();
       })
       .then(restore, restore);
@@ -2118,6 +2634,16 @@ document.getElementById('btn-save').addEventListener('click',     doSave);
 document.getElementById('btn-load').addEventListener('click',     function() { document.getElementById('json-input').click(); });
 document.getElementById('btn-settings').addEventListener('click', openSettings);
 document.getElementById('btn-print').addEventListener('click',    doPrint);
+
+/* ----------------------------------------------------------------
+   LIVE PAGE-BREAK UPDATES
+   Any content edit inside the document (typing, paste, font change)
+   should re-trigger the layout so break indicators stay accurate.
+   ---------------------------------------------------------------- */
+document.getElementById('document').addEventListener('input', function() {
+  schedulePageLayout();
+});
+window.addEventListener('resize', function() { schedulePageLayout(); });
 
 /* ----------------------------------------------------------------
    OVERLAY BACKDROP CLOSE + ESC
