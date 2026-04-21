@@ -12,14 +12,6 @@
     "cardCmSize": 11,
     "cardCmAlign": "center"
   },
-  "expansion": {
-    "major-grid": 1.5,
-    "stats": 1.5,
-    "minor-table": 1.5,
-    "html-block": 1.5,
-    "section-heading": 1.5,
-    "header": 1.5
-  },
   "publications": [
     {
       "name": "AP",
