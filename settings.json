@@ -4,13 +4,17 @@
     "accentColor": "#0580c8"
   },
   "typography": {
-    "statValueSize": 46,
+    "statValueSize": 40,
     "statLabelSize": 10,
-    "sectionHeadingSize": 14,
+    "sectionHeadingSize": 16,
     "tableTextSize": 11,
     "cardHlSize": 16,
-    "cardCmSize": 11,
-    "cardCmAlign": "center"
+    "cardCmSize": 12,
+    "cardCmAlign": "center",
+    "htmlBlockSize": 12
+  },
+  "editor": {
+    "showLabels": true
   },
   "publications": [
     {
@@ -140,15 +144,15 @@
     },
     {
       "name": "Washington Post",
-      "domain": "washingtonpost.com",
-      "font": "'Playfair Display',Georgia,serif",
-      "nameColor": "#0d0d0d",
-      "cardBg": "#ffffff",
-      "logoUrl": "",
       "aliases": [
         "The Washington Post",
         "WaPo"
       ],
+      "domain": "washingtonpost.com",
+      "font": "'Playfair Display',Georgia,serif",
+      "nameColor": "#0d0d0d",
+      "cardBg": "#ffffff",
+      "logoUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7j0eNkVqKnqU-vTMmkAm9yA0BaSqkkmZltw&s",
       "logoData": ""
     },
     {
@@ -354,6 +358,28 @@
       "nameColor": "#0d0d0d",
       "cardBg": "#ffffff",
       "logoUrl": "",
+      "logoData": ""
+    },
+    {
+      "name": "CBS News",
+      "aliases": [
+        "CBS"
+      ],
+      "domain": "",
+      "font": "'Roboto Condensed',sans-serif",
+      "nameColor": "#000000",
+      "cardBg": "#ffffff",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/2/2e/CBS_News_2020_%28Stacked_II%29.svg",
+      "logoData": ""
+    },
+    {
+      "name": "Politico Pro",
+      "aliases": [],
+      "domain": "",
+      "font": "'Source Sans 3',sans-serif",
+      "nameColor": "#000000",
+      "cardBg": "#ffffff",
+      "logoUrl": "https://static.politico.com/91/ed/aafed2764f7ea3c46b74b7b05301/politico-pro-red-and-black.png",
       "logoData": ""
     }
   ],
